@@ -66,18 +66,34 @@ interface ExperimentTaskProps {
     nBackFalseAlarms: number;
     pmCueCorrect: number;
     pmCueMissed: number;
+    totalImages: number;
+    totalPMCues: number;
+    totalNBackMatches: number;
+    nBackAccuracy: string;
+    pmCueAccuracy: string;
   }) => void;
 }
 
 // Define images arrays for each category with a full set of 76 images per category
 // Generate image paths dynamically to ensure we have 76 images per category
 const generateImagePaths = (category: string, count: number = 76) => {
-  return Array.from({ length: count }, (_, i) => `/images/${category}/${category}${i + 1}.jpg`);
+  const paths = [];
+  for (let i = 1; i <= count; i++) {
+    paths.push(`/images/${category}/${category}${i}.jpg`);
+  }
+  return paths;
 };
 
 const pleasantImages = generateImagePaths('pleasant');
 const neutralImages = generateImagePaths('neutral');
 const unpleasantImages = generateImagePaths('unpleasant');
+
+console.log('Generated image paths:', {
+  pleasant: pleasantImages.length,
+  neutral: neutralImages.length,
+  unpleasant: unpleasantImages.length,
+  sample: pleasantImages.slice(0, 3)
+});
 
 // Define PM cues for each category - just 5 per category to avoid missing files
 const pleasantPMCues = [
@@ -185,137 +201,131 @@ type ExperimentPhase = 'pmCue' | 'trial' | 'blockEnd';
 
 // Prepare a single session's trials
 const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPractice: boolean = false) => {
-  // Get the appropriate image array and PM cues for this session type
-  let imageArray: string[] = [];
-  let pmCues: any[] = [];
-  
-  if (sessionType === 'pleasant') {
-    // Get 35 random images from pleasant category
-    imageArray = [...pleasantImages].sort(() => Math.random() - 0.5).slice(0, 35);
+  try {
+    console.log('Starting prepareSessionTrials with:', { sessionType, blockIndex });
     
-    // Get 5 random PM cues
-    const allPMCues = Array.from({ length: 25 }, (_, i) => ({
-      id: `pmcue-pleasant-${i + 1}`,
-      type: 'pleasant',
-      isPMCue: true,
-      src: `/images/pmcues/pleasantcues/pleasantcue${i + 1}.jpg`
-    }));
-    pmCues = [...allPMCues].sort(() => Math.random() - 0.5).slice(0, 5);
-  } else if (sessionType === 'neutral') {
-    // Get 35 random images from neutral category
-    imageArray = [...neutralImages].sort(() => Math.random() - 0.5).slice(0, 35);
+    // Get the appropriate image array and PM cues for this session type
+    let imageArray: string[] = [];
+    let pmCues: any[] = [];
     
-    // Get 5 random PM cues
-    const allPMCues = Array.from({ length: 25 }, (_, i) => ({
-      id: `pmcue-neutral-${i + 1}`,
-      type: 'neutral',
-      isPMCue: true,
-      src: `/images/pmcues/neutralcues/neutralcue${i + 1}.jpg`
-    }));
-    pmCues = [...allPMCues].sort(() => Math.random() - 0.5).slice(0, 5);
-  } else if (sessionType === 'unpleasant') {
-    // Get 35 random images from unpleasant category
-    imageArray = [...unpleasantImages].sort(() => Math.random() - 0.5).slice(0, 35);
-    
-    // Get 5 random PM cues
-    const allPMCues = Array.from({ length: 25 }, (_, i) => ({
-      id: `pmcue-unpleasant-${i + 1}`,
-      type: 'unpleasant',
-      isPMCue: true,
-      src: `/images/pmcues/unpleasantcues/unpleasantcue${i + 1}.jpg`
-    }));
-    pmCues = [...allPMCues].sort(() => Math.random() - 0.5).slice(0, 5);
-  }
-  
-  console.log(`Using PM cues for ${sessionType} block ${blockIndex}:`, pmCues.map(c => c.src));
-  
-  // Create regular images for trials
-  const regularImages = imageArray.map((src, index) => ({
-    id: `${sessionType}-${index}-${blockIndex}`,
-    type: sessionType,
-    isPMCue: false,
-    src
-  }));
-  
-  // Create the trials array
-  const trials = [];
-  
-  if (isPractice) {
-    // For practice trials, just create 15 random trials with some n-back matches
-    const practiceImages = [...regularImages].sort(() => Math.random() - 0.5).slice(0, 15);
-    trials.push(...practiceImages);
-    
-    // Add 5 n-back matches at random positions
-    let nBackCount = 0;
-    while (nBackCount < 5) {
-      const insertPosition = Math.floor(Math.random() * (trials.length - 1)) + 1;
-      const imageToRepeat = trials[insertPosition - 1];
-      trials.splice(insertPosition, 0, { ...imageToRepeat });
-      nBackCount++;
+    if (sessionType === 'pleasant') {
+      console.log('Using pleasant images and cues');
+      // Get 35 random images from pleasant category
+      imageArray = [...pleasantImages].sort(() => Math.random() - 0.5).slice(0, 35);
+      pmCues = [...pleasantPMCues].sort(() => Math.random() - 0.5).slice(0, 5);
+    } else if (sessionType === 'neutral') {
+      console.log('Using neutral images and cues');
+      // Get 35 random images from neutral category
+      imageArray = [...neutralImages].sort(() => Math.random() - 0.5).slice(0, 35);
+      pmCues = [...neutralPMCues].sort(() => Math.random() - 0.5).slice(0, 5);
+    } else if (sessionType === 'unpleasant') {
+      console.log('Using unpleasant images and cues');
+      // Get 35 random images from unpleasant category
+      imageArray = [...unpleasantImages].sort(() => Math.random() - 0.5).slice(0, 35);
+      pmCues = [...unpleasantPMCues].sort(() => Math.random() - 0.5).slice(0, 5);
     }
-  } else {
-    // First, create a sequence of 35 unique images
-    const uniqueImages = [...regularImages];
     
-    // Keep track of which images have been used for n-back matches
-    const usedForNBack = new Set<number>();
+    console.log(`Selected ${imageArray.length} images and ${pmCues.length} PM cues`);
     
-    // Create 20 n-back matches by inserting repeats at appropriate positions
-    let nBackCount = 0;
-    while (nBackCount < 20) {
-      // Randomly select a position to insert the repeat (ensuring it's not at the start)
-      const insertPosition = Math.floor(Math.random() * (uniqueImages.length - 1)) + 1;
-      // Get the image that will be repeated (the one before the insert position)
-      const imageToRepeat = uniqueImages[insertPosition - 1];
-      const imageIndex = regularImages.findIndex(img => img.id === imageToRepeat.id);
+    // Create regular images for trials
+    const regularImages = imageArray.map((src, index) => ({
+      id: `${sessionType}-${index}-${blockIndex}`,
+      type: sessionType,
+      isPMCue: false,
+      src
+    }));
+    
+    // Create the trials array
+    const trials = [];
+    
+    if (isPractice) {
+      console.log('Preparing practice trials');
+      // For practice trials, just create 15 random trials with some n-back matches
+      const practiceImages = [...regularImages].sort(() => Math.random() - 0.5).slice(0, 15);
+      trials.push(...practiceImages);
       
-      // Only use this image if it hasn't been used for an n-back match before
-      if (!usedForNBack.has(imageIndex)) {
-        // Insert the repeat
-        uniqueImages.splice(insertPosition, 0, { ...imageToRepeat });
-        usedForNBack.add(imageIndex);
-        nBackCount++;
+      // Add 5 n-back matches at random positions
+      let nBackCount = 0;
+      const usedForNBack = new Set<number>();
+      
+      while (nBackCount < 5) {
+        const insertPosition = Math.floor(Math.random() * (trials.length - 1)) + 1;
+        const imageToRepeat = trials[insertPosition - 1];
+        const imageIndex = practiceImages.findIndex(img => img.id === imageToRepeat.id);
+        
+        if (!usedForNBack.has(imageIndex)) {
+          trials.splice(insertPosition, 0, { ...imageToRepeat });
+          usedForNBack.add(imageIndex);
+          nBackCount++;
+        }
       }
-    }
-    
-    // Add all images to trials
-    trials.push(...uniqueImages);
-    
-    // Add PM cue trials (distributed randomly)
-    // First, create multiple copies of each PM cue
-    const pmCueCopies = [];
-    for (const pmCue of pmCues) {
-      // Add 3 copies of each PM cue to ensure they appear multiple times
-      for (let i = 0; i < 3; i++) {
-        pmCueCopies.push({ ...pmCue });
+      console.log(`Created ${trials.length} practice trials with ${nBackCount} n-back matches`);
+    } else {
+      console.log('Preparing main experiment trials');
+      // First, create a sequence of 35 unique images
+      const uniqueImages = [...regularImages];
+      
+      // Keep track of which images have been used for n-back matches
+      const usedForNBack = new Set<number>();
+      
+      // Create 20 n-back matches by inserting repeats at appropriate positions
+      let nBackCount = 0;
+      while (nBackCount < 20) {
+        const insertPosition = Math.floor(Math.random() * (uniqueImages.length - 1)) + 1;
+        const imageToRepeat = uniqueImages[insertPosition - 1];
+        const imageIndex = regularImages.findIndex(img => img.id === imageToRepeat.id);
+        
+        if (!usedForNBack.has(imageIndex)) {
+          uniqueImages.splice(insertPosition, 0, { ...imageToRepeat });
+          usedForNBack.add(imageIndex);
+          nBackCount++;
+        }
       }
+      
+      // Add all images to trials
+      trials.push(...uniqueImages);
+      
+      // Add exactly 5 PM cues at random positions
+      // Shuffle the PM cues
+      const shuffledPMCues = [...pmCues].sort(() => Math.random() - 0.5);
+      
+      // Insert PM cues at random positions, ensuring they don't appear as n-back matches
+      for (const pmCue of shuffledPMCues) {
+        let insertPosition;
+        do {
+          insertPosition = Math.floor(Math.random() * (trials.length + 1));
+        } while (
+          // Don't insert if it would create an n-back match
+          (insertPosition > 0 && trials[insertPosition - 1]?.isPMCue) ||
+          (insertPosition < trials.length && trials[insertPosition]?.isPMCue)
+        );
+        trials.splice(insertPosition, 0, pmCue);
+      }
+      
+      console.log(`Created ${trials.length} main trials with ${nBackCount} n-back matches and ${shuffledPMCues.length} PM cues`);
     }
     
-    // Shuffle the PM cue copies
-    const shuffledPMCues = [...pmCueCopies].sort(() => Math.random() - 0.5);
+    // Verify n-back matches and PM cues
+    const nBackMatches = trials.filter((trial, index) => 
+      index > 0 && trial.id === trials[index - 1].id
+    );
+    const pmCueCount = trials.filter(trial => trial.isPMCue).length;
     
-    // Insert PM cues at random positions, ensuring they don't appear as n-back matches
-    for (const pmCue of shuffledPMCues) {
-      let insertPosition;
-      do {
-        insertPosition = Math.floor(Math.random() * (trials.length + 1));
-      } while (
-        // Don't insert if it would create an n-back match
-        (insertPosition > 0 && trials[insertPosition - 1]?.isPMCue) ||
-        (insertPosition < trials.length && trials[insertPosition]?.isPMCue)
-      );
-      trials.splice(insertPosition, 0, pmCue);
-    }
+    console.log('Trial verification:', {
+      totalTrials: trials.length,
+      nBackMatches: nBackMatches.length,
+      pmCues: pmCueCount,
+      expectedPMCues: 5
+    });
+    
+    return {
+      pmCues,
+      trials
+    };
+  } catch (error) {
+    console.error('Error in prepareSessionTrials:', error);
+    throw error;
   }
-  
-  console.log(`Prepared ${trials.length} trials for ${sessionType} session (block ${blockIndex})`);
-  console.log(`Number of n-back matches: ${nBackCount}`);
-  console.log(`Number of PM cue presentations: ${isPractice ? 0 : pmCueCopies.length}`);
-  
-  return {
-    pmCues,
-    trials
-  };
 };
 
 const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
@@ -342,6 +352,11 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     nBackFalseAlarms: 0,
     pmCueCorrect: 0,
     pmCueMissed: 0,
+    totalImages: 0,
+    totalPMCues: 0,
+    totalNBackMatches: 0,
+    nBackAccuracy: '0.00',
+    pmCueAccuracy: '0.00'
   });
   const [startTime, setStartTime] = useState(0);
   const [isExperimentActive, setIsExperimentActive] = useState(true);
@@ -427,12 +442,13 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     };
   }, []);
   
-  // Add practice state
-  const [isPractice, setIsPractice] = useState(true);
-  const [practiceCompleted, setPracticeCompleted] = useState(false);
-  
   // Initialize first block
   useEffect(() => {
+    initializeBlock();
+  }, [currentSession, currentBlock]);
+  
+  // Separate initialization function for reuse
+  const initializeBlock = useCallback(() => {
     try {
       if (currentSession && currentBlock >= 0) {
         // Show loading state
@@ -447,20 +463,23 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
             const { pmCues: blockPMCues, trials: blockTrials } = prepareSessionTrials(
               currentSession, 
               currentBlock,
-              isPractice
+              false // Always false now since we removed practice
             );
             
-            console.log(`Prepared session trials:`, {
+            console.log(`Session preparation completed:`, {
               pmCuesCount: blockPMCues.length,
               trialsCount: blockTrials.length,
-              isPractice
+              pmCues: blockPMCues.map(cue => cue.src),
+              firstFewTrials: blockTrials.slice(0, 3).map(trial => trial.src)
             });
 
             // Preload images to avoid blank screens
             const imagesToPreload = [
               ...blockPMCues.map(cue => cue.src),
               ...blockTrials.map(trial => trial.src)
-            ];
+            ].filter(Boolean);
+
+            console.log(`Images to preload:`, imagesToPreload);
 
             let loadedImages = 0;
             let successfullyLoaded = 0;
@@ -469,7 +488,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
             const preloadTimeout = setTimeout(() => {
               console.log(`Preload timeout reached - ${successfullyLoaded}/${imagesToPreload.length} images loaded`);
               finishInitialization();
-            }, 5000); // 5-second max wait
+            }, 5000);
 
             const finishInitialization = () => {
               clearTimeout(preloadTimeout);
@@ -478,12 +497,14 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
               setCurrentPMCueIndex(0);
               setCurrentTrialIndex(-1);
               setCurrentPhase('pmCue');
-              setResponses({}); // Reset responses for the new block
+              setResponses({});
               setInitialized(true);
               setIsLoading(false);
+              console.log('Initialization completed successfully');
             };
 
             if (imagesToPreload.length === 0) {
+              console.log('No images to preload, finishing initialization');
               finishInitialization();
               return;
             }
@@ -491,6 +512,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
             imagesToPreload.forEach(src => {
               if (!src) {
                 loadedImages++;
+                console.log(`Skipping null/undefined image source (${loadedImages}/${imagesToPreload.length})`);
                 if (loadedImages === imagesToPreload.length) {
                   finishInitialization();
                 }
@@ -506,9 +528,9 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                   finishInitialization();
                 }
               };
-              img.onerror = () => {
+              img.onerror = (error) => {
                 loadedImages++;
-                console.error(`Failed to preload image: ${src}`);
+                console.error(`Failed to preload image: ${src}`, error);
                 if (loadedImages === imagesToPreload.length) {
                   finishInitialization();
                 }
@@ -527,13 +549,90 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       toast.error('Error initializing experiment. Please try again.');
       setIsLoading(false);
     }
-  }, [currentSession, currentBlock, isPractice]);
+  }, [currentSession, currentBlock]);
   
   // Function to check if current trial is a 1-back match
   const isOneBackMatch = useCallback((index: number) => {
     if (index <= 0 || index >= trials.length) return false;
     return trials[index].id === trials[index - 1].id;
   }, [trials]);
+  
+  // Function to evaluate performance at the end
+  const evaluatePerformance = useCallback(() => {
+    console.log('Evaluating performance...');
+    console.log('Current responses:', responses);
+    console.log('Current trials:', trials);
+
+    let nBackCorrect = 0;
+    let nBackMissed = 0;
+    let nBackFalseAlarms = 0;
+    let pmCueCorrect = 0;
+    let pmCueMissed = 0;
+    
+    // Count total images and PM cues
+    const totalImages = trials.filter(trial => !trial.isPMCue).length;
+    const totalPMCues = trials.filter(trial => trial.isPMCue).length;
+    const totalNBackMatches = trials.filter((trial, index) => 
+      index > 0 && trial.id === trials[index - 1].id
+    ).length;
+    
+    // Evaluate each trial
+    trials.forEach((trial, index) => {
+      const trialResponses = responses[index] || [];
+      console.log(`Evaluating trial ${index}:`, {
+        trial,
+        responses: trialResponses,
+        isPMCue: trial.isPMCue,
+        isNBackMatch: index > 0 && trial.id === trials[index - 1].id
+      });
+
+      // Check for n-back responses
+      if (index > 0) {
+        const isNBackMatch = trial.id === trials[index - 1].id;
+        
+        if (isNBackMatch) {
+          if (trialResponses.includes('n')) {
+            nBackCorrect++;
+            console.log(`Correct n-back response at trial ${index}`);
+          } else {
+            nBackMissed++;
+            console.log(`Missed n-back at trial ${index}`);
+          }
+        } else if (trialResponses.includes('n')) {
+          nBackFalseAlarms++;
+          console.log(`False alarm n-back at trial ${index}`);
+        }
+      }
+
+      // Check for PM cue responses
+      if (trial.isPMCue) {
+        if (trialResponses.includes('z')) {
+          pmCueCorrect++;
+          console.log(`Correct PM cue response at trial ${index}`);
+        } else {
+          pmCueMissed++;
+          console.log(`Missed PM cue at trial ${index}`);
+        }
+      }
+    });
+    
+    const results = {
+      nBackCorrect,
+      nBackMissed,
+      nBackFalseAlarms,
+      pmCueCorrect,
+      pmCueMissed,
+      totalImages,
+      totalPMCues,
+      totalNBackMatches,
+      // Add percentages for better analysis
+      nBackAccuracy: totalNBackMatches > 0 ? (nBackCorrect / totalNBackMatches * 100).toFixed(2) : 0,
+      pmCueAccuracy: totalPMCues > 0 ? (pmCueCorrect / totalPMCues * 100).toFixed(2) : 0
+    };
+    
+    console.log('Final results:', results);
+    return results;
+  }, [responses, trials]);
   
   // Handle keypress during experiment
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
@@ -573,10 +672,13 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     // Handle n and z keypresses during trials with fixation
     if (currentPhase === 'trial' && showFixation && isExperimentActive) {
       if (key === 'n' || key === 'z') {
+        console.log(`Recording response: ${key} for trial ${currentTrialIndex}`);
         setResponses(prev => {
           const trialResponses = prev[currentTrialIndex] || [];
           if (!trialResponses.includes(key)) {
-            return { ...prev, [currentTrialIndex]: [...trialResponses, key] };
+            const newResponses = { ...prev, [currentTrialIndex]: [...trialResponses, key] };
+            console.log('Updated responses:', newResponses);
+            return newResponses;
           }
           return prev;
         });
@@ -593,7 +695,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     isPaused,
     isLoading,
     onComplete,
-    trials
+    evaluatePerformance
   ]);
   
   // Set up keypress event listener
@@ -603,53 +705,6 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       window.removeEventListener('keydown', handleKeyPress);
     };
   }, [handleKeyPress]);
-  
-  // Function to evaluate performance at the end
-  const evaluatePerformance = useCallback(() => {
-    let nBackCorrect = 0;
-    let nBackMissed = 0;
-    let nBackFalseAlarms = 0;
-    let pmCueCorrect = 0;
-    let pmCueMissed = 0;
-    
-    // Combine all responses across all blocks and sessions
-    const allResponses = responses;
-    
-    // Calculate n-back and PM performance
-    Object.entries(allResponses).forEach(([trialIdxStr, trialResponses]) => {
-      const trialIdx = parseInt(trialIdxStr);
-      const blockTrials = trials; // This is simplified - would need session/block context in a real implementation
-      
-      if (trialIdx > 0 && trialIdx < blockTrials.length) {
-        const isMatch = isOneBackMatch(trialIdx);
-        const isPMCue = blockTrials[trialIdx - 1]?.isPMCue;
-        
-        // Evaluate n-back responses
-        if (isMatch && trialResponses.includes('n')) {
-          nBackCorrect++;
-        } else if (isMatch && !trialResponses.includes('n')) {
-          nBackMissed++;
-        } else if (!isMatch && trialResponses.includes('n')) {
-          nBackFalseAlarms++;
-        }
-        
-        // Evaluate PM responses
-        if (isPMCue && trialResponses.includes('z')) {
-          pmCueCorrect++;
-        } else if (isPMCue && !trialResponses.includes('z')) {
-          pmCueMissed++;
-        }
-      }
-    });
-    
-    return {
-      nBackCorrect,
-      nBackMissed,
-      nBackFalseAlarms,
-      pmCueCorrect,
-      pmCueMissed,
-    };
-  }, [responses, trials, isOneBackMatch]);
   
   // Effect to manage trial progression
   useEffect(() => {
@@ -670,21 +725,14 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         return () => clearTimeout(pmCueTimer);
       } else {
         // All PM cues shown, show fixation cross for 1 second
-        if (!isPractice) {
-          setShowFixation(true);
-          const fixationTimer = setTimeout(() => {
-            setShowFixation(false);
-            setCurrentPhase('trial');
-            setCurrentTrialIndex(0);
-            setStartTime(Date.now());
-          }, 1000);
-          return () => clearTimeout(fixationTimer);
-        } else {
+        setShowFixation(true);
+        const fixationTimer = setTimeout(() => {
+          setShowFixation(false);
           setCurrentPhase('trial');
           setCurrentTrialIndex(0);
           setStartTime(Date.now());
-        }
-        return;
+        }, 1000);
+        return () => clearTimeout(fixationTimer);
       }
     }
     
@@ -693,16 +741,6 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       if (currentTrialIndex >= trials.length) {
         // End of block
         console.log('End of block reached');
-        if (isPractice) {
-          // If practice is complete, move to main experiment
-          setIsPractice(false);
-          setPracticeCompleted(true);
-          setCurrentSession('pleasant');
-          setCurrentBlock(0);
-          setCurrentPhase('pmCue');
-          setCurrentPMCueIndex(0);
-          return;
-        }
         setCurrentPhase('blockEnd');
         setWaitingForSpacebar(true);
         return;
@@ -753,8 +791,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     isExperimentActive,
     isPaused,
     waitingForSpacebar,
-    isLoading,
-    isPractice
+    isLoading
   ]);
   
   const togglePause = () => {
@@ -853,75 +890,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
             onClick={() => {
               console.log('Manual initialization attempt');
               setIsLoading(true);
-              setTimeout(() => {
-                try {
-                  const { pmCues: blockPMCues, trials: blockTrials } = prepareSessionTrials(currentSession, currentBlock);
-                  
-                  // Preload images to avoid blank screens
-                  const imagesToPreload = [
-                    ...blockPMCues.map(cue => cue.src),
-                    ...blockTrials.map(trial => trial.src)
-                  ];
-
-                  let loadedImages = 0;
-                  let successfullyLoaded = 0;
-
-                  // Set a limit on waiting for image preloading
-                  const preloadTimeout = setTimeout(() => {
-                    console.log(`Preload timeout reached - ${successfullyLoaded}/${imagesToPreload.length} images loaded`);
-                    finishInitialization();
-                  }, 5000); // 5-second max wait
-
-                  const finishInitialization = () => {
-                    clearTimeout(preloadTimeout);
-                    setPMCues(blockPMCues);
-                    setTrials(blockTrials);
-                    setCurrentPMCueIndex(0);
-                    setCurrentTrialIndex(-1);
-                    setCurrentPhase('pmCue');
-                    setResponses({}); // Reset responses for the new block
-                    setInitialized(true);
-                    setIsLoading(false);
-                  };
-
-                  if (imagesToPreload.length === 0) {
-                    finishInitialization();
-                    return;
-                  }
-
-                  imagesToPreload.forEach(src => {
-                    if (!src) {
-                      loadedImages++;
-                      if (loadedImages === imagesToPreload.length) {
-                        finishInitialization();
-                      }
-                      return;
-                    }
-
-                    const img = new Image();
-                    img.onload = () => {
-                      loadedImages++;
-                      successfullyLoaded++;
-                      console.log(`Preloaded image: ${src} (${loadedImages}/${imagesToPreload.length})`);
-                      if (loadedImages === imagesToPreload.length) {
-                        finishInitialization();
-                      }
-                    };
-                    img.onerror = () => {
-                      loadedImages++;
-                      console.error(`Failed to preload image: ${src}`);
-                      if (loadedImages === imagesToPreload.length) {
-                        finishInitialization();
-                      }
-                    };
-                    img.src = src;
-                  });
-                } catch (err) {
-                  console.error('Error in manual initialization:', err);
-                  toast.error('Error initializing. Please refresh the page.');
-                  setIsLoading(false);
-                }
-              }, 100);
+              initializeBlock();
             }}
             className="mt-4"
           >
