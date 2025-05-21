@@ -184,7 +184,7 @@ type SessionType = 'pleasant' | 'neutral' | 'unpleasant';
 type ExperimentPhase = 'pmCue' | 'trial' | 'blockEnd';
 
 // Prepare a single session's trials
-const prepareSessionTrials = (sessionType: SessionType, blockIndex: number) => {
+const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPractice: boolean = false) => {
   // Get the appropriate image array and PM cues for this session type
   let imageArray: string[] = [];
   let pmCues: any[] = [];
@@ -240,55 +240,77 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number) => {
   // Create the trials array
   const trials = [];
   
-  // First, create a sequence of 35 unique images
-  const uniqueImages = [...regularImages];
-  
-  // Keep track of which images have been used for n-back matches
-  const usedForNBack = new Set<number>();
-  
-  // Create 20 n-back matches by inserting repeats at appropriate positions
-  let nBackCount = 0;
-  while (nBackCount < 20) {
-    // Randomly select a position to insert the repeat (ensuring it's not at the start)
-    const insertPosition = Math.floor(Math.random() * (uniqueImages.length - 1)) + 1;
-    // Get the image that will be repeated (the one before the insert position)
-    const imageToRepeat = uniqueImages[insertPosition - 1];
-    const imageIndex = regularImages.findIndex(img => img.id === imageToRepeat.id);
+  if (isPractice) {
+    // For practice trials, just create 15 random trials with some n-back matches
+    const practiceImages = [...regularImages].sort(() => Math.random() - 0.5).slice(0, 15);
+    trials.push(...practiceImages);
     
-    // Only use this image if it hasn't been used for an n-back match before
-    if (!usedForNBack.has(imageIndex)) {
-      // Insert the repeat
-      uniqueImages.splice(insertPosition, 0, { ...imageToRepeat });
-      usedForNBack.add(imageIndex);
+    // Add 5 n-back matches at random positions
+    let nBackCount = 0;
+    while (nBackCount < 5) {
+      const insertPosition = Math.floor(Math.random() * (trials.length - 1)) + 1;
+      const imageToRepeat = trials[insertPosition - 1];
+      trials.splice(insertPosition, 0, { ...imageToRepeat });
       nBackCount++;
     }
-  }
-  
-  // Add all images to trials
-  trials.push(...uniqueImages);
-  
-  // Add PM cue trials (distributed randomly)
-  // First, create multiple copies of each PM cue
-  const pmCueCopies = [];
-  for (const pmCue of pmCues) {
-    // Add 3 copies of each PM cue to ensure they appear multiple times
-    for (let i = 0; i < 3; i++) {
-      pmCueCopies.push({ ...pmCue });
+  } else {
+    // First, create a sequence of 35 unique images
+    const uniqueImages = [...regularImages];
+    
+    // Keep track of which images have been used for n-back matches
+    const usedForNBack = new Set<number>();
+    
+    // Create 20 n-back matches by inserting repeats at appropriate positions
+    let nBackCount = 0;
+    while (nBackCount < 20) {
+      // Randomly select a position to insert the repeat (ensuring it's not at the start)
+      const insertPosition = Math.floor(Math.random() * (uniqueImages.length - 1)) + 1;
+      // Get the image that will be repeated (the one before the insert position)
+      const imageToRepeat = uniqueImages[insertPosition - 1];
+      const imageIndex = regularImages.findIndex(img => img.id === imageToRepeat.id);
+      
+      // Only use this image if it hasn't been used for an n-back match before
+      if (!usedForNBack.has(imageIndex)) {
+        // Insert the repeat
+        uniqueImages.splice(insertPosition, 0, { ...imageToRepeat });
+        usedForNBack.add(imageIndex);
+        nBackCount++;
+      }
     }
-  }
-  
-  // Shuffle the PM cue copies
-  const shuffledPMCues = [...pmCueCopies].sort(() => Math.random() - 0.5);
-  
-  // Insert PM cues at random positions
-  for (const pmCue of shuffledPMCues) {
-    const insertPosition = Math.floor(Math.random() * (trials.length + 1));
-    trials.splice(insertPosition, 0, pmCue);
+    
+    // Add all images to trials
+    trials.push(...uniqueImages);
+    
+    // Add PM cue trials (distributed randomly)
+    // First, create multiple copies of each PM cue
+    const pmCueCopies = [];
+    for (const pmCue of pmCues) {
+      // Add 3 copies of each PM cue to ensure they appear multiple times
+      for (let i = 0; i < 3; i++) {
+        pmCueCopies.push({ ...pmCue });
+      }
+    }
+    
+    // Shuffle the PM cue copies
+    const shuffledPMCues = [...pmCueCopies].sort(() => Math.random() - 0.5);
+    
+    // Insert PM cues at random positions, ensuring they don't appear as n-back matches
+    for (const pmCue of shuffledPMCues) {
+      let insertPosition;
+      do {
+        insertPosition = Math.floor(Math.random() * (trials.length + 1));
+      } while (
+        // Don't insert if it would create an n-back match
+        (insertPosition > 0 && trials[insertPosition - 1]?.isPMCue) ||
+        (insertPosition < trials.length && trials[insertPosition]?.isPMCue)
+      );
+      trials.splice(insertPosition, 0, pmCue);
+    }
   }
   
   console.log(`Prepared ${trials.length} trials for ${sessionType} session (block ${blockIndex})`);
   console.log(`Number of n-back matches: ${nBackCount}`);
-  console.log(`Number of PM cue presentations: ${pmCueCopies.length}`);
+  console.log(`Number of PM cue presentations: ${isPractice ? 0 : pmCueCopies.length}`);
   
   return {
     pmCues,
@@ -405,6 +427,10 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     };
   }, []);
   
+  // Add practice state
+  const [isPractice, setIsPractice] = useState(true);
+  const [practiceCompleted, setPracticeCompleted] = useState(false);
+  
   // Initialize first block
   useEffect(() => {
     try {
@@ -418,11 +444,16 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         // Short timeout to ensure React renders before heavy computation
         setTimeout(() => {
           try {
-            const { pmCues: blockPMCues, trials: blockTrials } = prepareSessionTrials(currentSession, currentBlock);
+            const { pmCues: blockPMCues, trials: blockTrials } = prepareSessionTrials(
+              currentSession, 
+              currentBlock,
+              isPractice
+            );
             
             console.log(`Prepared session trials:`, {
               pmCuesCount: blockPMCues.length,
-              trialsCount: blockTrials.length
+              trialsCount: blockTrials.length,
+              isPractice
             });
 
             // Preload images to avoid blank screens
@@ -496,7 +527,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       toast.error('Error initializing experiment. Please try again.');
       setIsLoading(false);
     }
-  }, [currentSession, currentBlock]);
+  }, [currentSession, currentBlock, isPractice]);
   
   // Function to check if current trial is a 1-back match
   const isOneBackMatch = useCallback((index: number) => {
@@ -629,20 +660,30 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     // PM Cue phase - showing the 5 PM cues at start of block
     if (currentPhase === 'pmCue') {
       if (currentPMCueIndex < pmCues.length) {
-        // Show current PM cue for 3 seconds then move to next
+        // Show current PM cue for 2 seconds then move to next
         console.log(`Showing PM cue ${currentPMCueIndex + 1} of ${pmCues.length}`);
         
         const pmCueTimer = setTimeout(() => {
           setCurrentPMCueIndex(prevIndex => prevIndex + 1);
-        }, 3000);
+        }, 2000);
         
         return () => clearTimeout(pmCueTimer);
       } else {
-        // All PM cues shown, move to trial phase
-        console.log('All PM cues shown, moving to trial phase');
-        setCurrentPhase('trial');
-        setCurrentTrialIndex(0);
-        setStartTime(Date.now());
+        // All PM cues shown, show fixation cross for 1 second
+        if (!isPractice) {
+          setShowFixation(true);
+          const fixationTimer = setTimeout(() => {
+            setShowFixation(false);
+            setCurrentPhase('trial');
+            setCurrentTrialIndex(0);
+            setStartTime(Date.now());
+          }, 1000);
+          return () => clearTimeout(fixationTimer);
+        } else {
+          setCurrentPhase('trial');
+          setCurrentTrialIndex(0);
+          setStartTime(Date.now());
+        }
         return;
       }
     }
@@ -652,18 +693,29 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       if (currentTrialIndex >= trials.length) {
         // End of block
         console.log('End of block reached');
+        if (isPractice) {
+          // If practice is complete, move to main experiment
+          setIsPractice(false);
+          setPracticeCompleted(true);
+          setCurrentSession('pleasant');
+          setCurrentBlock(0);
+          setCurrentPhase('pmCue');
+          setCurrentPMCueIndex(0);
+          return;
+        }
         setCurrentPhase('blockEnd');
         setWaitingForSpacebar(true);
         return;
       }
       
       if (!showFixation) {
-        // Show image for 2000ms, then show fixation cross
+        // Show image for 1500ms for n-back task, 2000ms for PM cues
+        const imageDuration = trials[currentTrialIndex]?.isPMCue ? 2000 : 1500;
         console.log(`Showing trial ${currentTrialIndex + 1} of ${trials.length}`);
         
         const imageTimer = setTimeout(() => {
           setShowFixation(true);
-        }, 2000);
+        }, imageDuration);
         
         return () => clearTimeout(imageTimer);
       } else {
@@ -678,11 +730,9 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
           setCurrentTrialIndex(prevIndex => prevIndex + 1);
           
           // Don't inherit responses from any previous trials with same index
-          // (in case of wrapping around with many blocks)
           if (currentTrialIndex + 1 < trials.length) {
             setResponses(prev => {
               const newResponses = { ...prev };
-              // Clear any existing response for the next trial if it exists
               delete newResponses[currentTrialIndex + 1];
               return newResponses;
             });
@@ -703,7 +753,8 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     isExperimentActive,
     isPaused,
     waitingForSpacebar,
-    isLoading
+    isLoading,
+    isPractice
   ]);
   
   const togglePause = () => {
