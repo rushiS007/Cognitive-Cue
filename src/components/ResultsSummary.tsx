@@ -8,6 +8,12 @@ interface ResultsSummaryProps {
     nBackFalseAlarms: number;
     pmCueCorrect: number;
     pmCueMissed: number;
+    totalImages: number;
+    totalPMCues: number;
+    totalNBackMatches: number;
+    nBackAccuracy: string;
+    pmCueAccuracy: string;
+    sessionResults: any;
   };
   onRestart: () => void;
 }
@@ -19,10 +25,10 @@ const ResultsSummary = ({ results, onRestart }: ResultsSummaryProps) => {
   };
 
   // Calculate total back-to-back matches
-  const totalNBackTargets = results.nBackCorrect + results.nBackMissed;
+  const totalNBackTargets = results.totalNBackMatches || (results.nBackCorrect + results.nBackMissed);
   
   // Calculate total special images
-  const totalPMTargets = results.pmCueCorrect + results.pmCueMissed;
+  const totalPMTargets = results.totalPMCues || (results.pmCueCorrect + results.pmCueMissed);
   
   return (
     <Card className="w-full max-w-3xl">
@@ -35,7 +41,7 @@ const ResultsSummary = ({ results, onRestart }: ResultsSummaryProps) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-blue-50 rounded-lg p-4 flex flex-col items-center">
               <div className="text-2xl font-bold text-blue-600">
-                {calculatePercentage(results.nBackCorrect, totalNBackTargets)}
+                {results.nBackAccuracy || calculatePercentage(results.nBackCorrect, totalNBackTargets)}
               </div>
               <div className="text-sm text-gray-600 mt-1">Accuracy</div>
             </div>
@@ -61,7 +67,7 @@ const ResultsSummary = ({ results, onRestart }: ResultsSummaryProps) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-green-50 rounded-lg p-4 flex flex-col items-center">
               <div className="text-2xl font-bold text-green-600">
-                {calculatePercentage(results.pmCueCorrect, totalPMTargets)}
+                {results.pmCueAccuracy || calculatePercentage(results.pmCueCorrect, totalPMTargets)}
               </div>
               <div className="text-sm text-gray-600 mt-1">Detection Rate</div>
             </div>

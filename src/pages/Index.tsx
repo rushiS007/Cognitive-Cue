@@ -14,6 +14,12 @@ const Index = () => {
     nBackFalseAlarms: 0,
     pmCueCorrect: 0,
     pmCueMissed: 0,
+    totalImages: 0,
+    totalPMCues: 0,
+    totalNBackMatches: 0,
+    nBackAccuracy: '0.00',
+    pmCueAccuracy: '0.00',
+    sessionResults: {}
   });
 
   const startExperiment = () => {
@@ -21,12 +27,26 @@ const Index = () => {
   };
 
   const endExperiment = (experimentResults: typeof results) => {
+    console.log('Received experiment results:', experimentResults);
     setResults(experimentResults);
     setPhase('results');
   };
 
   const restartExperiment = () => {
     setPhase('intro');
+    setResults({
+      nBackCorrect: 0,
+      nBackMissed: 0,
+      nBackFalseAlarms: 0,
+      pmCueCorrect: 0,
+      pmCueMissed: 0,
+      totalImages: 0,
+      totalPMCues: 0,
+      totalNBackMatches: 0,
+      nBackAccuracy: '0.00',
+      pmCueAccuracy: '0.00',
+      sessionResults: {}
+    });
   };
 
   return (

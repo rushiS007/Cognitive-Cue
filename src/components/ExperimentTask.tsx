@@ -95,7 +95,7 @@ console.log('Generated image paths:', {
   sample: pleasantImages.slice(0, 3)
 });
 
-// Define PM cues for each category - just 5 per category to avoid missing files
+// Define PM cues for each category - 8 per category
 const pleasantPMCues = [
   {
     id: 'pmcue-pleasant-1',
@@ -126,6 +126,24 @@ const pleasantPMCues = [
     type: 'pleasant',
     isPMCue: true,
     src: '/images/pmcues/pleasantcues/pleasantcue5.jpg'
+  },
+  {
+    id: 'pmcue-pleasant-6',
+    type: 'pleasant',
+    isPMCue: true,
+    src: '/images/pmcues/pleasantcues/pleasantcue6.jpg'
+  },
+  {
+    id: 'pmcue-pleasant-7',
+    type: 'pleasant',
+    isPMCue: true,
+    src: '/images/pmcues/pleasantcues/pleasantcue7.jpg'
+  },
+  {
+    id: 'pmcue-pleasant-8',
+    type: 'pleasant',
+    isPMCue: true,
+    src: '/images/pmcues/pleasantcues/pleasantcue8.jpg'
   }
 ];
 
@@ -159,6 +177,24 @@ const neutralPMCues = [
     type: 'neutral',
     isPMCue: true,
     src: '/images/pmcues/neutralcues/neutralcue5.jpg'
+  },
+  {
+    id: 'pmcue-neutral-6',
+    type: 'neutral',
+    isPMCue: true,
+    src: '/images/pmcues/neutralcues/neutralcue6.jpg'
+  },
+  {
+    id: 'pmcue-neutral-7',
+    type: 'neutral',
+    isPMCue: true,
+    src: '/images/pmcues/neutralcues/neutralcue7.jpg'
+  },
+  {
+    id: 'pmcue-neutral-8',
+    type: 'neutral',
+    isPMCue: true,
+    src: '/images/pmcues/neutralcues/neutralcue8.jpg'
   }
 ];
 
@@ -192,6 +228,24 @@ const unpleasantPMCues = [
     type: 'unpleasant',
     isPMCue: true,
     src: '/images/pmcues/unpleasantcues/unpleasantcue5.jpg'
+  },
+  {
+    id: 'pmcue-unpleasant-6',
+    type: 'unpleasant',
+    isPMCue: true,
+    src: '/images/pmcues/unpleasantcues/unpleasantcue6.jpg'
+  },
+  {
+    id: 'pmcue-unpleasant-7',
+    type: 'unpleasant',
+    isPMCue: true,
+    src: '/images/pmcues/unpleasantcues/unpleasantcue7.jpg'
+  },
+  {
+    id: 'pmcue-unpleasant-8',
+    type: 'unpleasant',
+    isPMCue: true,
+    src: '/images/pmcues/unpleasantcues/unpleasantcue8.jpg'
   }
 ];
 
@@ -210,19 +264,19 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
     
     if (sessionType === 'pleasant') {
       console.log('Using pleasant images and cues');
-      // Get 35 random images from pleasant category
-      imageArray = [...pleasantImages].sort(() => Math.random() - 0.5).slice(0, 35);
-      pmCues = [...pleasantPMCues].sort(() => Math.random() - 0.5).slice(0, 5);
+      // Get 70 random images from pleasant category
+      imageArray = [...pleasantImages].sort(() => Math.random() - 0.5).slice(0, 70);
+      pmCues = [...pleasantPMCues].sort(() => Math.random() - 0.5).slice(0, 8);
     } else if (sessionType === 'neutral') {
       console.log('Using neutral images and cues');
-      // Get 35 random images from neutral category
-      imageArray = [...neutralImages].sort(() => Math.random() - 0.5).slice(0, 35);
-      pmCues = [...neutralPMCues].sort(() => Math.random() - 0.5).slice(0, 5);
+      // Get 70 random images from neutral category
+      imageArray = [...neutralImages].sort(() => Math.random() - 0.5).slice(0, 70);
+      pmCues = [...neutralPMCues].sort(() => Math.random() - 0.5).slice(0, 8);
     } else if (sessionType === 'unpleasant') {
       console.log('Using unpleasant images and cues');
-      // Get 35 random images from unpleasant category
-      imageArray = [...unpleasantImages].sort(() => Math.random() - 0.5).slice(0, 35);
-      pmCues = [...unpleasantPMCues].sort(() => Math.random() - 0.5).slice(0, 5);
+      // Get 70 random images from unpleasant category
+      imageArray = [...unpleasantImages].sort(() => Math.random() - 0.5).slice(0, 70);
+      pmCues = [...unpleasantPMCues].sort(() => Math.random() - 0.5).slice(0, 8);
     }
     
     console.log(`Selected ${imageArray.length} images and ${pmCues.length} PM cues`);
@@ -262,15 +316,23 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
       console.log(`Created ${trials.length} practice trials with ${nBackCount} n-back matches`);
     } else {
       console.log('Preparing main experiment trials');
-      // First, create a sequence of 35 unique images
-      const uniqueImages = [...regularImages];
+      
+      // Determine number of n-back matches based on block index
+      const nBackMatchesPerBlock = [23, 20, 25];
+      const nBackMatches = nBackMatchesPerBlock[blockIndex];
+      
+      // Calculate unique images needed (70 total - PM cues - n-back matches)
+      const uniqueImagesNeeded = 70 - 8 - nBackMatches;
+      
+      // First, create a sequence of unique images
+      const uniqueImages = [...regularImages].slice(0, uniqueImagesNeeded);
       
       // Keep track of which images have been used for n-back matches
       const usedForNBack = new Set<number>();
       
-      // Create 20 n-back matches by inserting repeats at appropriate positions
+      // Create n-back matches by inserting repeats at appropriate positions
       let nBackCount = 0;
-      while (nBackCount < 20) {
+      while (nBackCount < nBackMatches) {
         const insertPosition = Math.floor(Math.random() * (uniqueImages.length - 1)) + 1;
         const imageToRepeat = uniqueImages[insertPosition - 1];
         const imageIndex = regularImages.findIndex(img => img.id === imageToRepeat.id);
@@ -285,7 +347,7 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
       // Add all images to trials
       trials.push(...uniqueImages);
       
-      // Add exactly 5 PM cues at random positions
+      // Add exactly 8 PM cues at random positions
       // Shuffle the PM cues
       const shuffledPMCues = [...pmCues].sort(() => Math.random() - 0.5);
       
@@ -302,7 +364,7 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
         trials.splice(insertPosition, 0, pmCue);
       }
       
-      console.log(`Created ${trials.length} main trials with ${nBackCount} n-back matches and ${shuffledPMCues.length} PM cues`);
+      console.log(`Created ${trials.length} main trials with ${nBackCount} n-back matches and ${shuffledPMCues.length} PM cues for block ${blockIndex + 1}`);
     }
     
     // Verify n-back matches and PM cues
@@ -315,7 +377,8 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
       totalTrials: trials.length,
       nBackMatches: nBackMatches.length,
       pmCues: pmCueCount,
-      expectedPMCues: 5
+      expectedPMCues: 8,
+      blockIndex: blockIndex + 1
     });
     
     return {
@@ -346,6 +409,27 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   const [showFixation, setShowFixation] = useState(false);
   const [waitingForSpacebar, setWaitingForSpacebar] = useState(false);
   const [responses, setResponses] = useState<{[key: number]: string[]}>({});
+  
+  // Track results for each session and block
+  const [sessionResults, setSessionResults] = useState<{
+    [key: string]: {
+      blocks: {
+        nBackCorrect: number;
+        nBackMissed: number;
+        nBackFalseAlarms: number;
+        pmCueCorrect: number;
+        pmCueMissed: number;
+        totalImages: number;
+        totalPMCues: number;
+        totalNBackMatches: number;
+      }[];
+    };
+  }>({
+    pleasant: { blocks: [] },
+    unpleasant: { blocks: [] },
+    neutral: { blocks: [] }
+  });
+  
   const [results, setResults] = useState({
     nBackCorrect: 0,
     nBackMissed: 0,
@@ -356,8 +440,10 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     totalPMCues: 0,
     totalNBackMatches: 0,
     nBackAccuracy: '0.00',
-    pmCueAccuracy: '0.00'
+    pmCueAccuracy: '0.00',
+    sessionResults: {} as any
   });
+  
   const [startTime, setStartTime] = useState(0);
   const [isExperimentActive, setIsExperimentActive] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
@@ -557,9 +643,9 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     return trials[index].id === trials[index - 1].id;
   }, [trials]);
   
-  // Function to evaluate performance at the end
-  const evaluatePerformance = useCallback(() => {
-    console.log('Evaluating performance...');
+  // Function to evaluate performance for current block
+  const evaluateBlockPerformance = useCallback(() => {
+    console.log('Evaluating block performance...');
     console.log('Current responses:', responses);
     console.log('Current trials:', trials);
 
@@ -579,13 +665,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     // Evaluate each trial
     trials.forEach((trial, index) => {
       const trialResponses = responses[index] || [];
-      console.log(`Evaluating trial ${index}:`, {
-        trial,
-        responses: trialResponses,
-        isPMCue: trial.isPMCue,
-        isNBackMatch: index > 0 && trial.id === trials[index - 1].id
-      });
-
+      
       // Check for n-back responses
       if (index > 0) {
         const isNBackMatch = trial.id === trials[index - 1].id;
@@ -593,14 +673,11 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         if (isNBackMatch) {
           if (trialResponses.includes('n')) {
             nBackCorrect++;
-            console.log(`Correct n-back response at trial ${index}`);
           } else {
             nBackMissed++;
-            console.log(`Missed n-back at trial ${index}`);
           }
         } else if (trialResponses.includes('n')) {
           nBackFalseAlarms++;
-          console.log(`False alarm n-back at trial ${index}`);
         }
       }
 
@@ -608,15 +685,13 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       if (trial.isPMCue) {
         if (trialResponses.includes('z')) {
           pmCueCorrect++;
-          console.log(`Correct PM cue response at trial ${index}`);
         } else {
           pmCueMissed++;
-          console.log(`Missed PM cue at trial ${index}`);
         }
       }
     });
     
-    const results = {
+    const blockResults = {
       nBackCorrect,
       nBackMissed,
       nBackFalseAlarms,
@@ -624,15 +699,57 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       pmCueMissed,
       totalImages,
       totalPMCues,
-      totalNBackMatches,
-      // Add percentages for better analysis
-      nBackAccuracy: totalNBackMatches > 0 ? (nBackCorrect / totalNBackMatches * 100).toFixed(2) : 0,
-      pmCueAccuracy: totalPMCues > 0 ? (pmCueCorrect / totalPMCues * 100).toFixed(2) : 0
+      totalNBackMatches
     };
     
-    console.log('Final results:', results);
-    return results;
+    console.log('Block results:', blockResults);
+    return blockResults;
   }, [responses, trials]);
+
+  // Function to calculate final results
+  const calculateFinalResults = useCallback(() => {
+    let totalNBackCorrect = 0;
+    let totalNBackMissed = 0;
+    let totalNBackFalseAlarms = 0;
+    let totalPMCueCorrect = 0;
+    let totalPMCueMissed = 0;
+    let totalImages = 0;
+    let totalPMCues = 0;
+    let totalNBackMatches = 0;
+
+    // Calculate totals from all sessions and blocks
+    Object.entries(sessionResults).forEach(([session, data]) => {
+      console.log(`Processing results for session ${session}:`, data);
+      data.blocks.forEach((block, index) => {
+        console.log(`Block ${index + 1} results:`, block);
+        totalNBackCorrect += block.nBackCorrect;
+        totalNBackMissed += block.nBackMissed;
+        totalNBackFalseAlarms += block.nBackFalseAlarms;
+        totalPMCueCorrect += block.pmCueCorrect;
+        totalPMCueMissed += block.pmCueMissed;
+        totalImages += block.totalImages;
+        totalPMCues += block.totalPMCues;
+        totalNBackMatches += block.totalNBackMatches;
+      });
+    });
+
+    const results = {
+      nBackCorrect: totalNBackCorrect,
+      nBackMissed: totalNBackMissed,
+      nBackFalseAlarms: totalNBackFalseAlarms,
+      pmCueCorrect: totalPMCueCorrect,
+      pmCueMissed: totalPMCueMissed,
+      totalImages,
+      totalPMCues,
+      totalNBackMatches,
+      nBackAccuracy: totalNBackMatches > 0 ? (totalNBackCorrect / totalNBackMatches * 100).toFixed(2) : '0.00',
+      pmCueAccuracy: totalPMCues > 0 ? (totalPMCueCorrect / totalPMCues * 100).toFixed(2) : '0.00',
+      sessionResults
+    };
+
+    console.log('Calculated final results:', results);
+    return results;
+  }, [sessionResults]);
   
   // Handle keypress during experiment
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
@@ -644,11 +761,30 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     if (waitingForSpacebar && key === ' ') {
       setWaitingForSpacebar(false);
       
+      // Evaluate current block performance
+      const blockResults = evaluateBlockPerformance();
+      console.log('Block results before storing:', blockResults);
+      
+      // Store results for current block
+      setSessionResults(prev => {
+        const newResults = {
+          ...prev,
+          [currentSession]: {
+            blocks: [
+              ...prev[currentSession].blocks,
+              blockResults
+            ]
+          }
+        };
+        console.log('Updated session results:', newResults);
+        return newResults;
+      });
+      
       // Reset responses for the new block
       setResponses({});
       
       // Move to next block or session
-      if (currentBlock < 4) {
+      if (currentBlock < 2) {
         // Move to next block in the same session
         setCurrentBlock(prevBlock => prevBlock + 1);
       } else if (currentSession === 'pleasant') {
@@ -661,7 +797,8 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         setCurrentBlock(0);
       } else {
         // End of experiment
-        const finalResults = evaluatePerformance();
+        const finalResults = calculateFinalResults();
+        console.log('Final results at experiment end:', finalResults);
         setResults(finalResults);
         setIsExperimentActive(false);
         onComplete(finalResults);
@@ -695,7 +832,8 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     isPaused,
     isLoading,
     onComplete,
-    evaluatePerformance
+    evaluateBlockPerformance,
+    calculateFinalResults
   ]);
   
   // Set up keypress event listener
@@ -804,7 +942,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   // Calculate progress based on current session, block, and phase
   const calculateProgress = () => {
     const totalSessions = 3;
-    const blocksPerSession = 5;
+    const blocksPerSession = 3; // Changed from 5 to 3
     
     let sessionProgress = 0;
     if (currentSession === 'pleasant') sessionProgress = 0;
@@ -843,10 +981,86 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   
   // Add function to end session and show results
   const endSessionAndShowResults = () => {
-    const finalResults = evaluatePerformance();
-    setResults(finalResults);
+    console.log('Ending session early...');
+    
+    // First evaluate the current block if it's in progress
+    if (currentPhase === 'trial' && currentTrialIndex >= 0) {
+      console.log('Evaluating current block performance...');
+      const blockResults = evaluateBlockPerformance();
+      console.log('Current block results:', blockResults);
+      
+      // Store results for current block
+      setSessionResults(prev => {
+        const newResults = {
+          ...prev,
+          [currentSession]: {
+            blocks: [
+              ...prev[currentSession].blocks,
+              blockResults
+            ]
+          }
+        };
+        console.log('Updated session results:', newResults);
+        return newResults;
+      });
+    }
+    
+    // Calculate final results including all completed blocks
+    const finalResults = calculateFinalResults();
+    console.log('Final results before ending session:', finalResults);
+    
+    // Calculate totals from current trials if needed
+    const currentBlockResults = evaluateBlockPerformance();
+    console.log('Current block results for totals:', currentBlockResults);
+    
+    // Add current block results to totals if not already included
+    finalResults.nBackCorrect += currentBlockResults.nBackCorrect;
+    finalResults.nBackMissed += currentBlockResults.nBackMissed;
+    finalResults.nBackFalseAlarms += currentBlockResults.nBackFalseAlarms;
+    finalResults.pmCueCorrect += currentBlockResults.pmCueCorrect;
+    finalResults.pmCueMissed += currentBlockResults.pmCueMissed;
+    finalResults.totalImages += currentBlockResults.totalImages;
+    finalResults.totalPMCues += currentBlockResults.totalPMCues;
+    finalResults.totalNBackMatches += currentBlockResults.totalNBackMatches;
+    
+    // Ensure we have valid totals
+    if (finalResults.totalNBackMatches === 0) {
+      finalResults.totalNBackMatches = finalResults.nBackCorrect + finalResults.nBackMissed;
+    }
+    if (finalResults.totalPMCues === 0) {
+      finalResults.totalPMCues = finalResults.pmCueCorrect + finalResults.pmCueMissed;
+    }
+    
+    // Calculate accuracies
+    finalResults.nBackAccuracy = finalResults.totalNBackMatches > 0 
+      ? (finalResults.nBackCorrect / finalResults.totalNBackMatches * 100).toFixed(2)
+      : '0.00';
+    finalResults.pmCueAccuracy = finalResults.totalPMCues > 0
+      ? (finalResults.pmCueCorrect / finalResults.totalPMCues * 100).toFixed(2)
+      : '0.00';
+    
+    console.log('Final results with calculated totals:', finalResults);
+    
+    // Ensure we're passing all required fields
+    const completeResults = {
+      ...finalResults,
+      nBackCorrect: finalResults.nBackCorrect,
+      nBackMissed: finalResults.nBackMissed,
+      nBackFalseAlarms: finalResults.nBackFalseAlarms,
+      pmCueCorrect: finalResults.pmCueCorrect,
+      pmCueMissed: finalResults.pmCueMissed,
+      totalImages: finalResults.totalImages,
+      totalPMCues: finalResults.totalPMCues,
+      totalNBackMatches: finalResults.totalNBackMatches,
+      nBackAccuracy: finalResults.nBackAccuracy,
+      pmCueAccuracy: finalResults.pmCueAccuracy,
+      sessionResults: finalResults.sessionResults
+    };
+    
+    console.log('Complete results being passed:', completeResults);
+    setResults(completeResults);
     setIsExperimentActive(false);
-    onComplete(finalResults);
+    onComplete(completeResults);
   };
   
   // If still loading, show a loading indicator
