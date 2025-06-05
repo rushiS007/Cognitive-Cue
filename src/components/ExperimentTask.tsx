@@ -95,159 +95,42 @@ console.log('Generated image paths:', {
   sample: pleasantImages.slice(0, 3)
 });
 
-// Define PM cues for each category - 8 per category
-const pleasantPMCues = [
-  {
-    id: 'pmcue-pleasant-1',
-    type: 'pleasant',
+// Define PM cues for each category and block - 8 per category per block
+const generatePMCuesByBlock = (category: string) => {
+  // Create arrays for each block
+  const block1Cues = Array.from({ length: 8 }, (_, i) => ({
+    id: `pmcue-${category}-block1-${i + 1}`,
+    type: category,
     isPMCue: true,
-    src: '/images/pmcues/pleasantcues/pleasantcue1.jpg'
-  },
-  {
-    id: 'pmcue-pleasant-2',
-    type: 'pleasant',
+    src: `/images/pmcues/${category}cues/block1/${category}cue${i + 1}.jpg`
+  }));
+  
+  const block2Cues = Array.from({ length: 8 }, (_, i) => ({
+    id: `pmcue-${category}-block2-${i + 1}`,
+    type: category,
     isPMCue: true,
-    src: '/images/pmcues/pleasantcues/pleasantcue2.jpg'
-  },
-  {
-    id: 'pmcue-pleasant-3',
-    type: 'pleasant',
+    src: `/images/pmcues/${category}cues/block2/${category}cue${i + 1}.jpg`
+  }));
+  
+  const block3Cues = Array.from({ length: 8 }, (_, i) => ({
+    id: `pmcue-${category}-block3-${i + 1}`,
+    type: category,
     isPMCue: true,
-    src: '/images/pmcues/pleasantcues/pleasantcue3.jpg'
-  },
-  {
-    id: 'pmcue-pleasant-4',
-    type: 'pleasant',
-    isPMCue: true,
-    src: '/images/pmcues/pleasantcues/pleasantcue4.jpg'
-  },
-  {
-    id: 'pmcue-pleasant-5',
-    type: 'pleasant',
-    isPMCue: true,
-    src: '/images/pmcues/pleasantcues/pleasantcue5.jpg'
-  },
-  {
-    id: 'pmcue-pleasant-6',
-    type: 'pleasant',
-    isPMCue: true,
-    src: '/images/pmcues/pleasantcues/pleasantcue6.jpg'
-  },
-  {
-    id: 'pmcue-pleasant-7',
-    type: 'pleasant',
-    isPMCue: true,
-    src: '/images/pmcues/pleasantcues/pleasantcue7.jpg'
-  },
-  {
-    id: 'pmcue-pleasant-8',
-    type: 'pleasant',
-    isPMCue: true,
-    src: '/images/pmcues/pleasantcues/pleasantcue8.jpg'
-  }
-];
+    src: `/images/pmcues/${category}cues/block3/${category}cue${i + 1}.jpg`
+  }));
+  
+  return { block1: block1Cues, block2: block2Cues, block3: block3Cues };
+};
 
-const neutralPMCues = [
-  {
-    id: 'pmcue-neutral-1',
-    type: 'neutral',
-    isPMCue: true,
-    src: '/images/pmcues/neutralcues/neutralcue1.jpg'
-  },
-  {
-    id: 'pmcue-neutral-2',
-    type: 'neutral',
-    isPMCue: true,
-    src: '/images/pmcues/neutralcues/neutralcue2.jpg'
-  },
-  {
-    id: 'pmcue-neutral-3',
-    type: 'neutral',
-    isPMCue: true,
-    src: '/images/pmcues/neutralcues/neutralcue3.jpg'
-  },
-  {
-    id: 'pmcue-neutral-4',
-    type: 'neutral',
-    isPMCue: true,
-    src: '/images/pmcues/neutralcues/neutralcue4.jpg'
-  },
-  {
-    id: 'pmcue-neutral-5',
-    type: 'neutral',
-    isPMCue: true,
-    src: '/images/pmcues/neutralcues/neutralcue5.jpg'
-  },
-  {
-    id: 'pmcue-neutral-6',
-    type: 'neutral',
-    isPMCue: true,
-    src: '/images/pmcues/neutralcues/neutralcue6.jpg'
-  },
-  {
-    id: 'pmcue-neutral-7',
-    type: 'neutral',
-    isPMCue: true,
-    src: '/images/pmcues/neutralcues/neutralcue7.jpg'
-  },
-  {
-    id: 'pmcue-neutral-8',
-    type: 'neutral',
-    isPMCue: true,
-    src: '/images/pmcues/neutralcues/neutralcue8.jpg'
-  }
-];
+// Generate PM cues for each category
+const pleasantPMCuesByBlock = generatePMCuesByBlock('pleasant');
+const neutralPMCuesByBlock = generatePMCuesByBlock('neutral');
+const unpleasantPMCuesByBlock = generatePMCuesByBlock('unpleasant');
 
-const unpleasantPMCues = [
-  {
-    id: 'pmcue-unpleasant-1',
-    type: 'unpleasant',
-    isPMCue: true,
-    src: '/images/pmcues/unpleasantcues/unpleasantcue1.jpg'
-  },
-  {
-    id: 'pmcue-unpleasant-2',
-    type: 'unpleasant',
-    isPMCue: true,
-    src: '/images/pmcues/unpleasantcues/unpleasantcue2.jpg'
-  },
-  {
-    id: 'pmcue-unpleasant-3',
-    type: 'unpleasant',
-    isPMCue: true,
-    src: '/images/pmcues/unpleasantcues/unpleasantcue3.jpg'
-  },
-  {
-    id: 'pmcue-unpleasant-4',
-    type: 'unpleasant',
-    isPMCue: true,
-    src: '/images/pmcues/unpleasantcues/unpleasantcue4.jpg'
-  },
-  {
-    id: 'pmcue-unpleasant-5',
-    type: 'unpleasant',
-    isPMCue: true,
-    src: '/images/pmcues/unpleasantcues/unpleasantcue5.jpg'
-  },
-  {
-    id: 'pmcue-unpleasant-6',
-    type: 'unpleasant',
-    isPMCue: true,
-    src: '/images/pmcues/unpleasantcues/unpleasantcue6.jpg'
-  },
-  {
-    id: 'pmcue-unpleasant-7',
-    type: 'unpleasant',
-    isPMCue: true,
-    src: '/images/pmcues/unpleasantcues/unpleasantcue7.jpg'
-  },
-  {
-    id: 'pmcue-unpleasant-8',
-    type: 'unpleasant',
-    isPMCue: true,
-    src: '/images/pmcues/unpleasantcues/unpleasantcue8.jpg'
-  }
-];
+// For backwards compatibility
+const pleasantPMCues = pleasantPMCuesByBlock.block1;
+const neutralPMCues = neutralPMCuesByBlock.block1;
+const unpleasantPMCues = unpleasantPMCuesByBlock.block1;
 
 // Session types
 type SessionType = 'pleasant' | 'neutral' | 'unpleasant';
@@ -267,78 +150,39 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
       // Get 70 random images from pleasant category
       imageArray = [...pleasantImages].sort(() => Math.random() - 0.5).slice(0, 70);
       
-      // Use different cues for each block - reuse with different IDs to simulate different cues
+      // Use different cues for each block from organized folders
       if (blockIndex === 0) {
-        pmCuesForCurrentBlock = pleasantPMCues.map(cue => ({
-          ...cue,
-          id: `block0-${cue.id}`
-        }));
+        pmCuesForCurrentBlock = pleasantPMCuesByBlock.block1;
       } else if (blockIndex === 1) {
-        pmCuesForCurrentBlock = pleasantPMCues.map(cue => ({
-          ...cue,
-          id: `block1-${cue.id}`,
-          // Change the src to ensure different images
-          src: cue.src.replace('pleasantcue', 'pleasantcue-alt')
-        }));
+        pmCuesForCurrentBlock = pleasantPMCuesByBlock.block2;
       } else {
-        pmCuesForCurrentBlock = pleasantPMCues.map(cue => ({
-          ...cue,
-          id: `block2-${cue.id}`,
-          // Change the src to ensure different images 
-          src: cue.src.replace('pleasantcue', 'pleasantcue-alt2')
-        }));
+        pmCuesForCurrentBlock = pleasantPMCuesByBlock.block3;
       }
     } else if (sessionType === 'neutral') {
       console.log('Using neutral images and cues');
       // Get 70 random images from neutral category
       imageArray = [...neutralImages].sort(() => Math.random() - 0.5).slice(0, 70);
       
-      // Use different cues for each block - reuse with different IDs to simulate different cues
+      // Use different cues for each block from organized folders
       if (blockIndex === 0) {
-        pmCuesForCurrentBlock = neutralPMCues.map(cue => ({
-          ...cue,
-          id: `block0-${cue.id}`
-        }));
+        pmCuesForCurrentBlock = neutralPMCuesByBlock.block1;
       } else if (blockIndex === 1) {
-        pmCuesForCurrentBlock = neutralPMCues.map(cue => ({
-          ...cue,
-          id: `block1-${cue.id}`,
-          // Change the src to ensure different images
-          src: cue.src.replace('neutralcue', 'neutralcue-alt')
-        }));
+        pmCuesForCurrentBlock = neutralPMCuesByBlock.block2;
       } else {
-        pmCuesForCurrentBlock = neutralPMCues.map(cue => ({
-          ...cue,
-          id: `block2-${cue.id}`,
-          // Change the src to ensure different images
-          src: cue.src.replace('neutralcue', 'neutralcue-alt2')
-        }));
+        pmCuesForCurrentBlock = neutralPMCuesByBlock.block3;
       }
     } else if (sessionType === 'unpleasant') {
       console.log('Using unpleasant images and cues');
       // Get 70 random images from unpleasant category
       imageArray = [...unpleasantImages].sort(() => Math.random() - 0.5).slice(0, 70);
       
-      // Use different cues for each block - reuse with different IDs to simulate different cues
+      // Use different cues for each block from organized folders
       if (blockIndex === 0) {
-        pmCuesForCurrentBlock = unpleasantPMCues.map(cue => ({
-          ...cue,
-          id: `block0-${cue.id}`
-        }));
+        pmCuesForCurrentBlock = unpleasantPMCuesByBlock.block1;
       } else if (blockIndex === 1) {
-        pmCuesForCurrentBlock = unpleasantPMCues.map(cue => ({
-          ...cue,
-          id: `block1-${cue.id}`,
-          // Change the src to ensure different images
-          src: cue.src.replace('unpleasantcue', 'unpleasantcue-alt')
-        }));
+        pmCuesForCurrentBlock = unpleasantPMCuesByBlock.block2;
       } else {
-        pmCuesForCurrentBlock = unpleasantPMCues.map(cue => ({
-          ...cue,
-          id: `block2-${cue.id}`,
-          // Change the src to ensure different images
-          src: cue.src.replace('unpleasantcue', 'unpleasantcue-alt2')
-        }));
+        pmCuesForCurrentBlock = unpleasantPMCuesByBlock.block3;
       }
     }
     
@@ -351,32 +195,16 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
       // Use what we have or fallback to first block's cues
       if (pmCuesForCurrentBlock.length === 0) {
         if (sessionType === 'pleasant') {
-          pmCuesForCurrentBlock = pleasantPMCues.slice(0, 8);
+          pmCuesForCurrentBlock = pleasantPMCuesByBlock.block1;
         } else if (sessionType === 'neutral') {
-          pmCuesForCurrentBlock = neutralPMCues.slice(0, 8);
+          pmCuesForCurrentBlock = neutralPMCuesByBlock.block1;
         } else {
-          pmCuesForCurrentBlock = unpleasantPMCues.slice(0, 8);
+          pmCuesForCurrentBlock = unpleasantPMCuesByBlock.block1;
         }
       }
     }
     
-    // Remove the old PM cues selection code that was causing the issue
-    // const pmCuesPerBlock = 8;
-    // const startIndex = blockIndex * pmCuesPerBlock;
-    // const endIndex = startIndex + pmCuesPerBlock;
-    // 
-    // // Ensure we have enough PM cues for the requested block
-    // if (endIndex > allPMCues.length) {
-    //   console.warn(`Not enough PM cues for block ${blockIndex + 1}, reusing some cues`);
-    // }
-    // 
-    // // Get 8 PM cues for this block, wrapping around if necessary
-    // const pmCues = Array.from({ length: pmCuesPerBlock }, (_, i) => {
-    //   const index = (startIndex + i) % allPMCues.length;
-    //   return allPMCues[index];
-    // });
-
-    // Use our new approach instead
+    // Use our new approach
     const pmCues = pmCuesForCurrentBlock;
     
     // Create regular images for trials
@@ -1005,11 +833,22 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         
         return () => clearTimeout(imageTimer);
       } else {
-        // Show fixation until user responds (no automatic advancement)
-        console.log('Showing fixation, waiting for response');
+        // Show fixation for 1500ms then automatically advance to the next trial
+        console.log('Showing fixation, will automatically advance after 1500ms');
         
-        // No timer needed here as we'll advance on keypress
-        return () => {}; // Empty cleanup function
+        const fixationTimer = setTimeout(() => {
+          setShowFixation(false);
+          setCurrentTrialIndex(prevIndex => prevIndex + 1);
+          
+          // Don't inherit responses from any previous trials with same index
+          setResponses(prev => {
+            const newResponses = { ...prev };
+            delete newResponses[currentTrialIndex + 1];
+            return newResponses;
+          });
+        }, 1500); // Changed from 500ms to 1500ms
+        
+        return () => clearTimeout(fixationTimer);
       }
     }
   }, [
