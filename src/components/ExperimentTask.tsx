@@ -260,26 +260,124 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
     
     // Get the appropriate image array and PM cues for this session type
     let imageArray: string[] = [];
-    let pmCues: any[] = [];
-    
+    let pmCuesForCurrentBlock: any[] = [];
+
     if (sessionType === 'pleasant') {
       console.log('Using pleasant images and cues');
       // Get 70 random images from pleasant category
       imageArray = [...pleasantImages].sort(() => Math.random() - 0.5).slice(0, 70);
-      pmCues = [...pleasantPMCues].sort(() => Math.random() - 0.5).slice(0, 8);
+      
+      // Use different cues for each block - reuse with different IDs to simulate different cues
+      if (blockIndex === 0) {
+        pmCuesForCurrentBlock = pleasantPMCues.map(cue => ({
+          ...cue,
+          id: `block0-${cue.id}`
+        }));
+      } else if (blockIndex === 1) {
+        pmCuesForCurrentBlock = pleasantPMCues.map(cue => ({
+          ...cue,
+          id: `block1-${cue.id}`,
+          // Change the src to ensure different images
+          src: cue.src.replace('pleasantcue', 'pleasantcue-alt')
+        }));
+      } else {
+        pmCuesForCurrentBlock = pleasantPMCues.map(cue => ({
+          ...cue,
+          id: `block2-${cue.id}`,
+          // Change the src to ensure different images 
+          src: cue.src.replace('pleasantcue', 'pleasantcue-alt2')
+        }));
+      }
     } else if (sessionType === 'neutral') {
       console.log('Using neutral images and cues');
       // Get 70 random images from neutral category
       imageArray = [...neutralImages].sort(() => Math.random() - 0.5).slice(0, 70);
-      pmCues = [...neutralPMCues].sort(() => Math.random() - 0.5).slice(0, 8);
+      
+      // Use different cues for each block - reuse with different IDs to simulate different cues
+      if (blockIndex === 0) {
+        pmCuesForCurrentBlock = neutralPMCues.map(cue => ({
+          ...cue,
+          id: `block0-${cue.id}`
+        }));
+      } else if (blockIndex === 1) {
+        pmCuesForCurrentBlock = neutralPMCues.map(cue => ({
+          ...cue,
+          id: `block1-${cue.id}`,
+          // Change the src to ensure different images
+          src: cue.src.replace('neutralcue', 'neutralcue-alt')
+        }));
+      } else {
+        pmCuesForCurrentBlock = neutralPMCues.map(cue => ({
+          ...cue,
+          id: `block2-${cue.id}`,
+          // Change the src to ensure different images
+          src: cue.src.replace('neutralcue', 'neutralcue-alt2')
+        }));
+      }
     } else if (sessionType === 'unpleasant') {
       console.log('Using unpleasant images and cues');
       // Get 70 random images from unpleasant category
       imageArray = [...unpleasantImages].sort(() => Math.random() - 0.5).slice(0, 70);
-      pmCues = [...unpleasantPMCues].sort(() => Math.random() - 0.5).slice(0, 8);
+      
+      // Use different cues for each block - reuse with different IDs to simulate different cues
+      if (blockIndex === 0) {
+        pmCuesForCurrentBlock = unpleasantPMCues.map(cue => ({
+          ...cue,
+          id: `block0-${cue.id}`
+        }));
+      } else if (blockIndex === 1) {
+        pmCuesForCurrentBlock = unpleasantPMCues.map(cue => ({
+          ...cue,
+          id: `block1-${cue.id}`,
+          // Change the src to ensure different images
+          src: cue.src.replace('unpleasantcue', 'unpleasantcue-alt')
+        }));
+      } else {
+        pmCuesForCurrentBlock = unpleasantPMCues.map(cue => ({
+          ...cue,
+          id: `block2-${cue.id}`,
+          // Change the src to ensure different images
+          src: cue.src.replace('unpleasantcue', 'unpleasantcue-alt2')
+        }));
+      }
     }
     
-    console.log(`Selected ${imageArray.length} images and ${pmCues.length} PM cues`);
+    console.log(`Selected ${imageArray.length} images`);
+    console.log(`Using block ${blockIndex + 1}, selected PM cues:`, pmCuesForCurrentBlock.map(cue => cue.id));
+    
+    // If we don't have enough PM cues for the current block, handle the error gracefully
+    if (pmCuesForCurrentBlock.length < 8) {
+      console.warn(`Not enough PM cues for block ${blockIndex + 1}, using available cues`);
+      // Use what we have or fallback to first block's cues
+      if (pmCuesForCurrentBlock.length === 0) {
+        if (sessionType === 'pleasant') {
+          pmCuesForCurrentBlock = pleasantPMCues.slice(0, 8);
+        } else if (sessionType === 'neutral') {
+          pmCuesForCurrentBlock = neutralPMCues.slice(0, 8);
+        } else {
+          pmCuesForCurrentBlock = unpleasantPMCues.slice(0, 8);
+        }
+      }
+    }
+    
+    // Remove the old PM cues selection code that was causing the issue
+    // const pmCuesPerBlock = 8;
+    // const startIndex = blockIndex * pmCuesPerBlock;
+    // const endIndex = startIndex + pmCuesPerBlock;
+    // 
+    // // Ensure we have enough PM cues for the requested block
+    // if (endIndex > allPMCues.length) {
+    //   console.warn(`Not enough PM cues for block ${blockIndex + 1}, reusing some cues`);
+    // }
+    // 
+    // // Get 8 PM cues for this block, wrapping around if necessary
+    // const pmCues = Array.from({ length: pmCuesPerBlock }, (_, i) => {
+    //   const index = (startIndex + i) % allPMCues.length;
+    //   return allPMCues[index];
+    // });
+
+    // Use our new approach instead
+    const pmCues = pmCuesForCurrentBlock;
     
     // Create regular images for trials
     const regularImages = imageArray.map((src, index) => ({
@@ -450,6 +548,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   const [initialized, setInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [isDebugMode, setIsDebugMode] = useState(false);
   
   // Reference to the container element for fullscreen
   const containerRef = useRef<HTMLDivElement>(null);
@@ -819,6 +918,17 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
           }
           return prev;
         });
+        
+        // Immediately advance to the next trial after response
+        setShowFixation(false);
+        setCurrentTrialIndex(prevIndex => prevIndex + 1);
+        
+        // Don't inherit responses from any previous trials with same index
+        setResponses(prev => {
+          const newResponses = { ...prev };
+          delete newResponses[currentTrialIndex + 1];
+          return newResponses;
+        });
       }
     }
   }, [
@@ -895,27 +1005,11 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         
         return () => clearTimeout(imageTimer);
       } else {
-        // Show fixation for random duration, then move to next trial
-        const fixationDurations = [1200, 1400, 1600];
-        const randomDuration = fixationDurations[Math.floor(Math.random() * fixationDurations.length)];
+        // Show fixation until user responds (no automatic advancement)
+        console.log('Showing fixation, waiting for response');
         
-        console.log(`Showing fixation for ${randomDuration}ms before moving to next trial`);
-        
-        const fixationTimer = setTimeout(() => {
-          setShowFixation(false);
-          setCurrentTrialIndex(prevIndex => prevIndex + 1);
-          
-          // Don't inherit responses from any previous trials with same index
-          if (currentTrialIndex + 1 < trials.length) {
-            setResponses(prev => {
-              const newResponses = { ...prev };
-              delete newResponses[currentTrialIndex + 1];
-              return newResponses;
-            });
-          }
-        }, randomDuration);
-        
-        return () => clearTimeout(fixationTimer);
+        // No timer needed here as we'll advance on keypress
+        return () => {}; // Empty cleanup function
       }
     }
   }, [
@@ -1289,6 +1383,132 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                 <span className="text-green-600">Response recorded</span>
               ) : null}
             </div>
+          </div>
+          
+          {/* Debug Controls */}
+          <div className="mt-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsDebugMode(!isDebugMode)}
+              className="mb-2"
+            >
+              {isDebugMode ? "Hide Debug Controls" : "Show Debug Controls"}
+            </Button>
+            
+            {isDebugMode && (
+              <div className="p-4 border border-dashed border-yellow-500 rounded-md bg-yellow-50">
+                <h3 className="font-bold text-yellow-800 mb-2">Debug Controls</h3>
+                
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <h4 className="font-semibold mb-1">Session</h4>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant={currentSession === 'pleasant' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentSession('pleasant');
+                          setCurrentBlock(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Pleasant
+                      </Button>
+                      <Button 
+                        variant={currentSession === 'unpleasant' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentSession('unpleasant');
+                          setCurrentBlock(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Unpleasant
+                      </Button>
+                      <Button 
+                        variant={currentSession === 'neutral' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentSession('neutral');
+                          setCurrentBlock(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Neutral
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-semibold mb-1">Block</h4>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant={currentBlock === 0 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentBlock(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Block 1
+                      </Button>
+                      <Button 
+                        variant={currentBlock === 1 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentBlock(1);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Block 2
+                      </Button>
+                      <Button 
+                        variant={currentBlock === 2 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentBlock(2);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Block 3
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-gray-100 p-2 rounded text-sm">
+                  <div><strong>Current State:</strong></div>
+                  <div>Session: {currentSession}, Block: {currentBlock + 1}, Phase: {currentPhase}</div>
+                  <div>Trial: {currentTrialIndex + 1}/{trials.length}, PM Cue: {currentPMCueIndex + 1}/{pmCues.length}</div>
+                  <div>Initialized: {initialized ? 'Yes' : 'No'}, Active: {isExperimentActive ? 'Yes' : 'No'}</div>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
       </ErrorBoundary>
