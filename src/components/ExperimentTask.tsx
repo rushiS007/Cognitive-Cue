@@ -634,7 +634,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   }, [responses, trials]);
 
   // Function to calculate final results
-  const calculateFinalResults = useCallback(() => {
+  const calculateFinalResults = useCallback((currentSessionData: typeof sessionResults) => {
     let totalNBackCorrect = 0;
     let totalNBackMissed = 0;
     let totalNBackFalseAlarms = 0;
@@ -645,7 +645,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     let totalNBackMatches = 0;
 
     // Calculate totals from all sessions and blocks
-    Object.entries(sessionResults).forEach(([session, data]) => {
+    Object.entries(currentSessionData).forEach(([session, data]) => {
       console.log(`Processing results for session ${session}:`, data);
       data.blocks.forEach((block, index) => {
         console.log(`Block ${index + 1} results:`, block);
@@ -669,14 +669,15 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       totalImages,
       totalPMCues,
       totalNBackMatches,
-      nBackAccuracy: totalNBackMatches > 0 ? (totalNBackCorrect / totalNBackMatches * 100).toFixed(2) : '0.00',
-      pmCueAccuracy: totalPMCues > 0 ? (totalPMCueCorrect / totalPMCues * 100).toFixed(2) : '0.00',
-      sessionResults
+      // Accuracies will be calculated separately where this function is called
+      nBackAccuracy: '0.00', // Placeholder, will be overridden
+      pmCueAccuracy: '0.00', // Placeholder, will be overridden
+      sessionResults: currentSessionData
     };
 
-    console.log('Calculated final results:', results);
+    console.log('Calculated final results (raw totals):', results);
     return results;
-  }, [sessionResults]);
+  }, []);
   
   // Handle keypress during experiment
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
@@ -724,11 +725,27 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         setCurrentBlock(0);
       } else {
         // End of experiment
-        const finalResults = calculateFinalResults();
+        const finalResults = calculateFinalResults(sessionResults); // Pass current sessionResults state
         console.log('Final results at experiment end:', finalResults);
-        setResults(finalResults);
+        
+        // Calculate accuracies for the final results
+        const accuratelyCalculatedResults = { ...finalResults };
+        if (accuratelyCalculatedResults.totalNBackMatches === 0 && (accuratelyCalculatedResults.nBackCorrect + accuratelyCalculatedResults.nBackMissed > 0)) {
+          accuratelyCalculatedResults.totalNBackMatches = accuratelyCalculatedResults.nBackCorrect + accuratelyCalculatedResults.nBackMissed;
+        }
+        if (accuratelyCalculatedResults.totalPMCues === 0 && (accuratelyCalculatedResults.pmCueCorrect + accuratelyCalculatedResults.pmCueMissed > 0)) {
+          accuratelyCalculatedResults.totalPMCues = accuratelyCalculatedResults.pmCueCorrect + accuratelyCalculatedResults.pmCueMissed;
+        }
+        accuratelyCalculatedResults.nBackAccuracy = accuratelyCalculatedResults.totalNBackMatches > 0
+          ? (accuratelyCalculatedResults.nBackCorrect / accuratelyCalculatedResults.totalNBackMatches * 100).toFixed(2)
+          : '0.00';
+        accuratelyCalculatedResults.pmCueAccuracy = accuratelyCalculatedResults.totalPMCues > 0
+          ? (accuratelyCalculatedResults.pmCueCorrect / accuratelyCalculatedResults.totalPMCues * 100).toFixed(2)
+          : '0.00';
+
+        setResults(accuratelyCalculatedResults);
         setIsExperimentActive(false);
-        onComplete(finalResults);
+        onComplete(accuratelyCalculatedResults);
       }
       return;
     }
@@ -916,81 +933,56 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   const endSessionAndShowResults = () => {
     console.log('Ending session early...');
     
+    let updatedSessionResultsData = sessionResults;
+
     // First evaluate the current block if it's in progress
     if (currentPhase === 'trial' && currentTrialIndex >= 0) {
-      console.log('Evaluating current block performance...');
-      const blockResults = evaluateBlockPerformance();
-      console.log('Current block results:', blockResults);
+      console.log('Evaluating current block performance for early exit...');
+      const currentBlockPerformance = evaluateBlockPerformance();
+      console.log('Current block results (early exit):', currentBlockPerformance);
       
-      // Store results for current block
-      setSessionResults(prev => {
-        const newResults = {
-          ...prev,
-          [currentSession]: {
-            blocks: [
-              ...prev[currentSession].blocks,
-              blockResults
-            ]
-          }
-        };
-        console.log('Updated session results:', newResults);
-        return newResults;
-      });
+      // Store results for current block by creating an updated version of sessionResults
+      updatedSessionResultsData = {
+        ...sessionResults,
+        [currentSession]: {
+          ...sessionResults[currentSession],
+          blocks: [
+            ...(sessionResults[currentSession]?.blocks || []),
+            currentBlockPerformance
+          ]
+        }
+      };
+      // Update the main sessionResults state
+      setSessionResults(updatedSessionResultsData);
+      console.log('Updated session results state with current block (early exit):', updatedSessionResultsData);
     }
     
-    // Calculate final results including all completed blocks
-    const finalResults = calculateFinalResults();
-    console.log('Final results before ending session:', finalResults);
-    
-    // Calculate totals from current trials if needed
-    const currentBlockResults = evaluateBlockPerformance();
-    console.log('Current block results for totals:', currentBlockResults);
-    
-    // Add current block results to totals if not already included
-    finalResults.nBackCorrect += currentBlockResults.nBackCorrect;
-    finalResults.nBackMissed += currentBlockResults.nBackMissed;
-    finalResults.nBackFalseAlarms += currentBlockResults.nBackFalseAlarms;
-    finalResults.pmCueCorrect += currentBlockResults.pmCueCorrect;
-    finalResults.pmCueMissed += currentBlockResults.pmCueMissed;
-    finalResults.totalImages += currentBlockResults.totalImages;
-    finalResults.totalPMCues += currentBlockResults.totalPMCues;
-    finalResults.totalNBackMatches += currentBlockResults.totalNBackMatches;
-    
-    // Ensure we have valid totals
-    if (finalResults.totalNBackMatches === 0) {
-      finalResults.totalNBackMatches = finalResults.nBackCorrect + finalResults.nBackMissed;
+    // Calculate final results using the potentially updated session data
+    const finalAggregatedResults = calculateFinalResults(updatedSessionResultsData);
+    console.log('Final aggregated results from calculateFinalResults (early exit):', finalAggregatedResults);
+        
+    // Prepare the complete results object with accuracies
+    const completeResults = { ...finalAggregatedResults };
+
+    // Ensure totalNBackMatches and totalPMCues are correctly summed for accuracy calculation
+    // (This might be redundant if calculateFinalResults sums them correctly, but good for safety)
+    if (completeResults.totalNBackMatches === 0 && (completeResults.nBackCorrect + completeResults.nBackMissed > 0)) {
+      completeResults.totalNBackMatches = completeResults.nBackCorrect + completeResults.nBackMissed;
     }
-    if (finalResults.totalPMCues === 0) {
-      finalResults.totalPMCues = finalResults.pmCueCorrect + finalResults.pmCueMissed;
+    if (completeResults.totalPMCues === 0 && (completeResults.pmCueCorrect + completeResults.pmCueMissed > 0)) {
+      completeResults.totalPMCues = completeResults.pmCueCorrect + completeResults.pmCueMissed;
     }
     
     // Calculate accuracies
-    finalResults.nBackAccuracy = finalResults.totalNBackMatches > 0 
-      ? (finalResults.nBackCorrect / finalResults.totalNBackMatches * 100).toFixed(2)
+    completeResults.nBackAccuracy = completeResults.totalNBackMatches > 0 
+      ? (completeResults.nBackCorrect / completeResults.totalNBackMatches * 100).toFixed(2)
       : '0.00';
-    finalResults.pmCueAccuracy = finalResults.totalPMCues > 0
-      ? (finalResults.pmCueCorrect / finalResults.totalPMCues * 100).toFixed(2)
+    completeResults.pmCueAccuracy = completeResults.totalPMCues > 0
+      ? (completeResults.pmCueCorrect / completeResults.totalPMCues * 100).toFixed(2)
       : '0.00';
     
-    console.log('Final results with calculated totals:', finalResults);
+    console.log('Complete results being passed to onComplete (early exit):', completeResults);
     
-    // Ensure we're passing all required fields
-    const completeResults = {
-      ...finalResults,
-      nBackCorrect: finalResults.nBackCorrect,
-      nBackMissed: finalResults.nBackMissed,
-      nBackFalseAlarms: finalResults.nBackFalseAlarms,
-      pmCueCorrect: finalResults.pmCueCorrect,
-      pmCueMissed: finalResults.pmCueMissed,
-      totalImages: finalResults.totalImages,
-      totalPMCues: finalResults.totalPMCues,
-      totalNBackMatches: finalResults.totalNBackMatches,
-      nBackAccuracy: finalResults.nBackAccuracy,
-      pmCueAccuracy: finalResults.pmCueAccuracy,
-      sessionResults: finalResults.sessionResults
-    };
-    
-    console.log('Complete results being passed:', completeResults);
     setResults(completeResults);
     setIsExperimentActive(false);
     onComplete(completeResults);
