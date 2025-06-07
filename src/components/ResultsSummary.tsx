@@ -8,6 +8,7 @@ interface ResultsSummaryProps {
     nBackFalseAlarms: number;
     pmCueCorrect: number;
     pmCueMissed: number;
+    pmCueFalseAlarms: number; // Added
     totalImages: number;
     totalPMCues: number;
     totalNBackMatches: number;
@@ -76,9 +77,13 @@ const ResultsSummary = ({ results, onRestart }: ResultsSummaryProps) => {
                 <span>Detected special images:</span>
                 <span className="font-medium">{results.pmCueCorrect} / {totalPMTargets}</span>
               </div>
-              <div className="text-sm flex justify-between">
+              <div className="text-sm flex justify-between mb-2">
                 <span>Missed special images:</span>
                 <span className="font-medium">{results.pmCueMissed}</span>
+              </div>
+              <div className="text-sm flex justify-between">
+                <span>False responses :</span>
+                <span className="font-medium">{results.pmCueFalseAlarms}</span>
               </div>
             </div>
           </div>

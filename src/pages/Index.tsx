@@ -14,6 +14,7 @@ const Index = () => {
     nBackFalseAlarms: 0,
     pmCueCorrect: 0,
     pmCueMissed: 0,
+    pmCueFalseAlarms: 0, // Added
     totalImages: 0,
     totalPMCues: 0,
     totalNBackMatches: 0,
@@ -40,6 +41,7 @@ const Index = () => {
       nBackFalseAlarms: 0,
       pmCueCorrect: 0,
       pmCueMissed: 0,
+      pmCueFalseAlarms: 0, // Added
       totalImages: 0,
       totalPMCues: 0,
       totalNBackMatches: 0,

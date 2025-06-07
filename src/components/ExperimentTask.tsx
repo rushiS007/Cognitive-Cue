@@ -66,6 +66,7 @@ interface ExperimentTaskProps {
     nBackFalseAlarms: number;
     pmCueCorrect: number;
     pmCueMissed: number;
+    pmCueFalseAlarms: number; // Added
     totalImages: number;
     totalPMCues: number;
     totalNBackMatches: number;
@@ -95,24 +96,24 @@ console.log('Generated image paths:', {
   sample: pleasantImages.slice(0, 3)
 });
 
-// Define PM cues for each category and block - 8 per category per block
+// Define PM cues for each category and block - 6 per category per block
 const generatePMCuesByBlock = (category: string) => {
   // Create arrays for each block
-  const block1Cues = Array.from({ length: 8 }, (_, i) => ({
+  const block1Cues = Array.from({ length: 6 }, (_, i) => ({
     id: `pmcue-${category}-block1-${i + 1}`,
     type: category,
     isPMCue: true,
     src: `/images/pmcues/${category}cues/block1/${category}cue${i + 1}.jpg`
   }));
   
-  const block2Cues = Array.from({ length: 8 }, (_, i) => ({
+  const block2Cues = Array.from({ length: 6 }, (_, i) => ({
     id: `pmcue-${category}-block2-${i + 1}`,
     type: category,
     isPMCue: true,
     src: `/images/pmcues/${category}cues/block2/${category}cue${i + 1}.jpg`
   }));
   
-  const block3Cues = Array.from({ length: 8 }, (_, i) => ({
+  const block3Cues = Array.from({ length: 6 }, (_, i) => ({
     id: `pmcue-${category}-block3-${i + 1}`,
     type: category,
     isPMCue: true,
@@ -134,7 +135,7 @@ const unpleasantPMCues = unpleasantPMCuesByBlock.block1;
 
 // Session types
 type SessionType = 'pleasant' | 'neutral' | 'unpleasant';
-type ExperimentPhase = 'pmCue' | 'trial' | 'blockEnd';
+type ExperimentPhase = 'pmCue' | 'trial' | 'blockEnd' | 'pmCueTransitionToTrial';
 
 // Prepare a single session's trials
 const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPractice: boolean = false) => {
@@ -190,7 +191,7 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
     console.log(`Using block ${blockIndex + 1}, selected PM cues:`, pmCuesForCurrentBlock.map(cue => cue.id));
     
     // If we don't have enough PM cues for the current block, handle the error gracefully
-    if (pmCuesForCurrentBlock.length < 8) {
+    if (pmCuesForCurrentBlock.length < 6) {
       console.warn(`Not enough PM cues for block ${blockIndex + 1}, using available cues`);
       // Use what we have or fallback to first block's cues
       if (pmCuesForCurrentBlock.length === 0) {
@@ -248,7 +249,7 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
       const nBackMatches = nBackMatchesPerBlock[blockIndex];
       
       // Calculate unique images needed (70 total - PM cues - n-back matches)
-      const uniqueImagesNeeded = 70 - 8 - nBackMatches;
+      const uniqueImagesNeeded = 70 - 6 - nBackMatches;
       
       // First, create a sequence of unique images
       const uniqueImages = [...regularImages].slice(0, uniqueImagesNeeded);
@@ -273,7 +274,7 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
       // Add all images to trials
       trials.push(...uniqueImages);
       
-      // Add exactly 8 PM cues at random positions
+      // Add exactly 6 PM cues at random positions
       // Shuffle the PM cues
       const shuffledPMCues = [...pmCues].sort(() => Math.random() - 0.5);
       
@@ -300,10 +301,11 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
     const pmCueCount = trials.filter(trial => trial.isPMCue).length;
     
     console.log('Trial verification:', {
+      sessionType,
       totalTrials: trials.length,
       nBackMatches: nBackMatches.length,
       pmCues: pmCueCount,
-      expectedPMCues: 8,
+      expectedPMCues: 6,
       blockIndex: blockIndex + 1
     });
     
@@ -334,6 +336,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   // Experiment state
   const [showFixation, setShowFixation] = useState(false);
   const [waitingForSpacebar, setWaitingForSpacebar] = useState(false);
+  const [waitingForSpacebarAfterPMCues, setWaitingForSpacebarAfterPMCues] = useState(false); // New state
   const [responses, setResponses] = useState<{[key: number]: string[]}>({});
   
   // Track results for each session and block
@@ -345,6 +348,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         nBackFalseAlarms: number;
         pmCueCorrect: number;
         pmCueMissed: number;
+        pmCueFalseAlarms: number; // Added
         totalImages: number;
         totalPMCues: number;
         totalNBackMatches: number;
@@ -362,6 +366,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     nBackFalseAlarms: 0,
     pmCueCorrect: 0,
     pmCueMissed: 0,
+    pmCueFalseAlarms: 0, // Added
     totalImages: 0,
     totalPMCues: 0,
     totalNBackMatches: 0,
@@ -511,6 +516,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
               setCurrentTrialIndex(-1);
               setCurrentPhase('pmCue');
               setResponses({});
+              setWaitingForSpacebarAfterPMCues(false); // Reset here
               setInitialized(true);
               setIsLoading(false);
               console.log('Initialization completed successfully');
@@ -581,7 +587,8 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     let nBackFalseAlarms = 0;
     let pmCueCorrect = 0;
     let pmCueMissed = 0;
-    
+    let pmCueFalseAlarms = 0; // Added
+
     // Count total images and PM cues
     const totalImages = trials.filter(trial => !trial.isPMCue).length;
     const totalPMCues = trials.filter(trial => trial.isPMCue).length;
@@ -615,6 +622,10 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         } else {
           pmCueMissed++;
         }
+      } else { // This is a non-PM cue trial
+        if (trialResponses.includes('z')) {
+          pmCueFalseAlarms++; // User pressed 'z' for a non-PM cue
+        }
       }
     });
     
@@ -624,6 +635,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       nBackFalseAlarms,
       pmCueCorrect,
       pmCueMissed,
+      pmCueFalseAlarms, // Added
       totalImages,
       totalPMCues,
       totalNBackMatches
@@ -640,6 +652,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     let totalNBackFalseAlarms = 0;
     let totalPMCueCorrect = 0;
     let totalPMCueMissed = 0;
+    let totalPMCueFalseAlarms = 0; // Added
     let totalImages = 0;
     let totalPMCues = 0;
     let totalNBackMatches = 0;
@@ -654,6 +667,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         totalNBackFalseAlarms += block.nBackFalseAlarms;
         totalPMCueCorrect += block.pmCueCorrect;
         totalPMCueMissed += block.pmCueMissed;
+        totalPMCueFalseAlarms += block.pmCueFalseAlarms; // Added
         totalImages += block.totalImages;
         totalPMCues += block.totalPMCues;
         totalNBackMatches += block.totalNBackMatches;
@@ -666,6 +680,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       nBackFalseAlarms: totalNBackFalseAlarms,
       pmCueCorrect: totalPMCueCorrect,
       pmCueMissed: totalPMCueMissed,
+      pmCueFalseAlarms: totalPMCueFalseAlarms, // Added
       totalImages,
       totalPMCues,
       totalNBackMatches,
@@ -684,6 +699,15 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     if (isPaused || isLoading) return;
     
     const key = e.key.toLowerCase();
+
+    // Handle spacebar press after PM cues
+    if (waitingForSpacebarAfterPMCues && key === ' ') {
+      console.log('Spacebar pressed after PM cues, proceeding to trials');
+      setWaitingForSpacebarAfterPMCues(false);
+      setShowFixation(true); // Show fixation cross before trials
+      setCurrentPhase('pmCueTransitionToTrial');
+      return;
+    }
     
     // Handle spacebar press at block end
     if (waitingForSpacebar && key === ' ') {
@@ -780,6 +804,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     currentPhase,
     showFixation,
     waitingForSpacebar,
+    waitingForSpacebarAfterPMCues, // Added dependency
     currentBlock,
     currentSession,
     currentTrialIndex,
@@ -801,11 +826,11 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   
   // Effect to manage trial progression
   useEffect(() => {
-    if (!initialized || !isExperimentActive || isPaused || waitingForSpacebar || isLoading) {
+    if (!initialized || !isExperimentActive || isPaused || waitingForSpacebar || isLoading || waitingForSpacebarAfterPMCues) {
       return;
     }
     
-    // PM Cue phase - showing the 5 PM cues at start of block
+    // PM Cue phase - showing the PM cues at start of block
     if (currentPhase === 'pmCue') {
       if (currentPMCueIndex < pmCues.length) {
         // Show current PM cue for 2 seconds then move to next
@@ -817,16 +842,27 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         
         return () => clearTimeout(pmCueTimer);
       } else {
-        // All PM cues shown, show fixation cross for 1 second
-        setShowFixation(true);
-        const fixationTimer = setTimeout(() => {
-          setShowFixation(false);
-          setCurrentPhase('trial');
-          setCurrentTrialIndex(0);
-          setStartTime(Date.now());
-        }, 1000);
-        return () => clearTimeout(fixationTimer);
+        // All PM cues shown, wait for spacebar
+        console.log('All PM cues shown, waiting for spacebar to proceed to trials.');
+        setWaitingForSpacebarAfterPMCues(true);
+        // No automatic transition here, handled by spacebar press
+        return; 
       }
+    }
+
+    // New phase to handle transition from PM Cues to Trials after spacebar
+    if (currentPhase === 'pmCueTransitionToTrial') {
+      // Show fixation cross for 1 second, then start trials
+      console.log('Transitioning to trials after spacebar, showing fixation.');
+      // setShowFixation(true) is already set by handleKeyPress
+      const fixationTimer = setTimeout(() => {
+        setShowFixation(false);
+        setCurrentPhase('trial');
+        setCurrentTrialIndex(0);
+        setStartTime(Date.now());
+        console.log('Fixation after PM cues complete, starting trials.');
+      }, 1000);
+      return () => clearTimeout(fixationTimer);
     }
     
     // Trial phase - the actual experiment with fixation crosses
@@ -879,6 +915,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     isExperimentActive,
     isPaused,
     waitingForSpacebar,
+    waitingForSpacebarAfterPMCues, // Added dependency
     isLoading
   ]);
   
@@ -1128,82 +1165,57 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                 </Button>
               </div>
             }>
+              {/* Main experiment display area */}
               {isPaused && (
-                <div className="text-xl font-semibold text-gray-600">Experiment Paused</div>
-              )}
-              
-              {!isPaused && waitingForSpacebar && (
-                <div className="p-8 flex flex-col items-center text-center">
-                  <div className="text-xl font-semibold mb-4">Block Complete</div>
-                  <div className="text-lg mb-6">
-                    Press <span className="font-bold">SPACEBAR</span> to continue to the next block
-                  </div>
+                <div className="text-center">
+                  <h3 className="text-2xl font-semibold mb-4">Experiment Paused</h3>
+                  <p className="text-lg">Press the "Continue" button to resume.</p>
                 </div>
               )}
-              
-              {!isPaused && !waitingForSpacebar && currentPhase === 'pmCue' && pmCues.length > 0 && currentPMCueIndex < pmCues.length && (
-                <div className="p-8 flex flex-col items-center">
 
-                  <div className={`${
-                    isFullScreen ? 'h-[50vh] w-[50vh]' : 'h-80 w-80'
-                  } flex items-center justify-center border-2 border-gray-300 rounded-md bg-white overflow-hidden`}>
-                    {pmCues[currentPMCueIndex]?.src ? (
-                      <img 
-                        src={pmCues[currentPMCueIndex].src} 
-                        alt={`Special image from ${currentSession} category`}
-                        className="max-h-full max-w-full object-contain"
-                        onError={(e) => {
-                          console.error(`Failed to load PM cue image: ${pmCues[currentPMCueIndex].src}`);
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement?.classList.add('image-error');
-                        }}
-                      />
-                    ) : (
-                      <div className="text-lg font-bold text-red-500">
-                        
-                      </div>
-                    )}
-                  </div>
+              {!isPaused && waitingForSpacebarAfterPMCues && (
+                <div className="text-center p-8">
+                  <p className="text-lg">Press <strong>SPACEBAR</strong> to continue to the images.</p>
+                </div>
+              )}
+
+              {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'pmCue' && currentPMCueIndex < pmCues.length && pmCues[currentPMCueIndex] && (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <img 
+                    src={pmCues[currentPMCueIndex].src} 
+                    alt={`PM Cue ${currentPMCueIndex + 1}`} 
+                    className="max-h-[350px] max-w-full object-contain rounded-lg shadow-md"
+                  />
+                  
                 </div>
               )}
               
-              {!isPaused && !waitingForSpacebar && currentPhase === 'trial' && trials.length > 0 && currentTrialIndex >= 0 && currentTrialIndex < trials.length && (
-                <>
-                  {!showFixation ? (
-                    <div className="p-8 flex flex-col items-center">
-                      <div className={`${
-                        isFullScreen ? 'h-[50vh] w-[50vh]' : 'h-80 w-80'
-                      } flex items-center justify-center border-2 border-gray-300 rounded-md bg-white overflow-hidden`}>
-                        {trials[currentTrialIndex]?.src ? (
-                          <img 
-                            src={trials[currentTrialIndex].src} 
-                            alt={`${trials[currentTrialIndex].type} image`}
-                            className="max-h-full max-w-full object-contain"
-                            onError={(e) => {
-                              console.error(`Failed to load trial image: ${trials[currentTrialIndex].src}`);
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.parentElement?.classList.add('image-error');
-                            }}
-                          />
-                        ) : (
-                          <div className="text-lg font-bold">
-                            {trials[currentTrialIndex]?.isPMCue ? (
-                              <span className="text-red-500">Special Image</span>
-                            ) : (
-                              `${trials[currentTrialIndex]?.type.charAt(0).toUpperCase() + trials[currentTrialIndex]?.type.slice(1)} Image`
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="p-8 flex flex-col items-center">
-                      <div className={`${
-                        isFullScreen ? 'text-8xl' : 'text-7xl'
-                      } mb-4`}>+</div>
+              {!isPaused && !waitingForSpacebarAfterPMCues && (currentPhase === 'trial' || currentPhase === 'pmCueTransitionToTrial') && showFixation && (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-6xl font-bold text-gray-700">+</div>
+                </div>
+              )}
+              
+              {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'trial' && !showFixation && trials.length > 0 && currentTrialIndex < trials.length && trials[currentTrialIndex] && (
+                <div className="flex flex-col items-center justify-center h-full">
+                  <img 
+                    src={trials[currentTrialIndex].src} 
+                    alt={`Trial ${currentTrialIndex + 1}`} 
+                    className="max-h-[350px] max-w-full object-contain rounded-lg shadow-md" 
+                  />
+                  {isDebugMode && (
+                    <div className="mt-2 text-xs bg-gray-200 p-1 rounded">
+                      Trial: {currentTrialIndex + 1}/{trials.length} | ID: {trials[currentTrialIndex].id} | PM: {trials[currentTrialIndex].isPMCue ? 'Yes' : 'No'} | 1-Back: {isOneBackMatch(currentTrialIndex) ? 'Yes' : 'No'}
                     </div>
                   )}
-                </>
+                </div>
+              )}
+              
+              {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'blockEnd' && waitingForSpacebar && (
+                <div className="text-center p-8">
+                  <h3 className="text-xl font-medium mb-4">Block Complete!</h3>
+                  <p className="text-lg">Press <strong>SPACEBAR</strong> to continue to the next block or session.</p>
+                </div>
               )}
             </ErrorBoundary>
           </div>
