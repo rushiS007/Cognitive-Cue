@@ -787,17 +787,17 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
           }
           return prev;
         });
-        
-        // Immediately advance to the next trial after response
-        setShowFixation(false);
-        setCurrentTrialIndex(prevIndex => prevIndex + 1);
-        
-        // Don't inherit responses from any previous trials with same index
-        setResponses(prev => {
-          const newResponses = { ...prev };
-          delete newResponses[currentTrialIndex + 1];
-          return newResponses;
-        });
+        // Keep fixation cross for 500ms after response, then advance
+        setTimeout(() => {
+          setShowFixation(false);
+          setCurrentTrialIndex(prevIndex => prevIndex + 1);
+          // Don't inherit responses from any previous trials with same index
+          setResponses(prev => {
+            const newResponses = { ...prev };
+            delete newResponses[currentTrialIndex + 1];
+            return newResponses;
+          });
+        }, 500);
       }
     }
   }, [

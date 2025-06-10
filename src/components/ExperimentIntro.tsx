@@ -112,7 +112,7 @@ const ExperimentIntro = ({ onStart }: ExperimentIntroProps) => {
       <CardContent className={`space-y-6 ${isFullScreen ? 'flex flex-col flex-1 justify-center' : ''}`}>
         <div className={`space-y-4 ${isFullScreen ? 'max-w-3xl mx-auto text-lg' : ''}`}>
           <p>
-            In this task, you will see images. Each image will be shown for a few seconds. It will be followed by a cross in the centre of the screen. You need to decide if you saw the same image being displaced back to back. This is called n=1 back task.
+            In this task, you will see images. Each image will be shown for a few seconds. It will be followed by a cross in the centre of the screen. You need to decide if you saw the same image being displayed back to back.
           </p>
           
           <p>
