@@ -319,10 +319,25 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
   }
 };
 
+// Function to shuffle array
+const shuffleArray = <T,>(array: T[]): T[] => {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+};
+
 const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
-  // Current session and block tracking
-  const [currentSession, setCurrentSession] = useState<SessionType>('pleasant');
+  // Block and session tracking
   const [currentBlock, setCurrentBlock] = useState(0);
+  const [currentSessionIndex, setCurrentSessionIndex] = useState(0);
+  const [blockSessionOrder] = useState<SessionType[][]>(() => {
+    // Create 3 blocks, each containing all session types in random order
+    return Array(3).fill(null).map(() => shuffleArray(['pleasant', 'unpleasant', 'neutral']));
+  });
+  const currentSession = blockSessionOrder[currentBlock][currentSessionIndex];
   const [currentPhase, setCurrentPhase] = useState<ExperimentPhase>('pmCue');
   
   // PM cues and trials for current block
@@ -339,26 +354,22 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   const [waitingForSpacebarAfterPMCues, setWaitingForSpacebarAfterPMCues] = useState(false); // New state
   const [responses, setResponses] = useState<{[key: number]: string[]}>({});
   
-  // Track results for each session and block
-  const [sessionResults, setSessionResults] = useState<{
-    [key: string]: {
-      blocks: {
-        nBackCorrect: number;
-        nBackMissed: number;
-        nBackFalseAlarms: number;
-        pmCueCorrect: number;
-        pmCueMissed: number;
-        pmCueFalseAlarms: number; // Added
-        totalImages: number;
-        totalPMCues: number;
-        totalNBackMatches: number;
-      }[];
-    };
-  }>({
-    pleasant: { blocks: [] },
-    unpleasant: { blocks: [] },
-    neutral: { blocks: [] }
-  });
+  // Define the type for block results
+  type BlockResult = {
+    nBackCorrect: number;
+    nBackMissed: number;
+    nBackFalseAlarms: number;
+    pmCueCorrect: number;
+    pmCueMissed: number;
+    pmCueFalseAlarms: number;
+    totalImages: number;
+    totalPMCues: number;
+    totalNBackMatches: number;
+    sessionType: SessionType;
+  };
+
+  // Track results for each block
+  const [blockResults, setBlockResults] = useState<BlockResult[]>([]);
   
   const [results, setResults] = useState({
     nBackCorrect: 0,
@@ -576,133 +587,128 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     return trials[index].id === trials[index - 1].id;
   }, [trials]);
   
-  // Function to evaluate performance for current block
-  const evaluateBlockPerformance = useCallback(() => {
-    console.log('Evaluating block performance...');
-    console.log('Current responses:', responses);
-    console.log('Current trials:', trials);
+  // Function to evaluate block performance
+  const evaluateBlockPerformance = (): BlockResult => {
+    const blockResults: BlockResult = {
+      nBackCorrect: 0,
+      nBackMissed: 0,
+      nBackFalseAlarms: 0,
+      pmCueCorrect: 0,
+      pmCueMissed: 0,
+      pmCueFalseAlarms: 0,
+      totalImages: trials.length,
+      totalPMCues: pmCues.length,
+      totalNBackMatches: 0,
+      sessionType: currentSession
+    };
 
-    let nBackCorrect = 0;
-    let nBackMissed = 0;
-    let nBackFalseAlarms = 0;
-    let pmCueCorrect = 0;
-    let pmCueMissed = 0;
-    let pmCueFalseAlarms = 0; // Added
-
-    // Count total images and PM cues
-    const totalImages = trials.filter(trial => !trial.isPMCue).length;
-    const totalPMCues = trials.filter(trial => trial.isPMCue).length;
-    const totalNBackMatches = trials.filter((trial, index) => 
-      index > 0 && trial.id === trials[index - 1].id
-    ).length;
-    
-    // Evaluate each trial
+    // Calculate n-back performance
     trials.forEach((trial, index) => {
-      const trialResponses = responses[index] || [];
-      
-      // Check for n-back responses
-      if (index > 0) {
-        const isNBackMatch = trial.id === trials[index - 1].id;
-        
-        if (isNBackMatch) {
-          if (trialResponses.includes('n')) {
-            nBackCorrect++;
-          } else {
-            nBackMissed++;
-          }
-        } else if (trialResponses.includes('n')) {
-          nBackFalseAlarms++;
-        }
-      }
+      if (index >= 2) { // Using 2-back
+        const isMatch = trial.src === trials[index - 2].src;
+        const trialResponses = responses[index] || [];
+        const hasResponse = trialResponses.length > 0;
 
-      // Check for PM cue responses
-      if (trial.isPMCue) {
-        if (trialResponses.includes('z')) {
-          pmCueCorrect++;
-        } else {
-          pmCueMissed++;
-        }
-      } else { // This is a non-PM cue trial
-        if (trialResponses.includes('z')) {
-          pmCueFalseAlarms++; // User pressed 'z' for a non-PM cue
+        if (isMatch) {
+          blockResults.totalNBackMatches++;
+          if (hasResponse) {
+            blockResults.nBackCorrect++;
+          } else {
+            blockResults.nBackMissed++;
+          }
+        } else if (hasResponse) {
+          blockResults.nBackFalseAlarms++;
         }
       }
     });
-    
-    const blockResults = {
-      nBackCorrect,
-      nBackMissed,
-      nBackFalseAlarms,
-      pmCueCorrect,
-      pmCueMissed,
-      pmCueFalseAlarms, // Added
-      totalImages,
-      totalPMCues,
-      totalNBackMatches
-    };
-    
-    console.log('Block results:', blockResults);
+
+    // Calculate PM cue performance
+    pmCues.forEach((cue, index) => {
+      const trialResponses = responses[index] || [];
+      const hasResponse = trialResponses.length > 0;
+
+      if (hasResponse) {
+        blockResults.pmCueCorrect++;
+      } else {
+        blockResults.pmCueMissed++;
+      }
+    });
+
     return blockResults;
-  }, [responses, trials]);
+  };
 
   // Function to calculate final results
-  const calculateFinalResults = useCallback((currentSessionData: typeof sessionResults) => {
+  const calculateFinalResults = useCallback((currentSessionData: BlockResult[]) => {
     let totalNBackCorrect = 0;
     let totalNBackMissed = 0;
     let totalNBackFalseAlarms = 0;
     let totalPMCueCorrect = 0;
     let totalPMCueMissed = 0;
-    let totalPMCueFalseAlarms = 0; // Added
+    let totalPMCueFalseAlarms = 0;
     let totalImages = 0;
     let totalPMCues = 0;
     let totalNBackMatches = 0;
 
-    // Calculate totals from all sessions and blocks
-    Object.entries(currentSessionData).forEach(([session, data]) => {
-      console.log(`Processing results for session ${session}:`, data);
-      data.blocks.forEach((block, index) => {
-        console.log(`Block ${index + 1} results:`, block);
-        totalNBackCorrect += block.nBackCorrect;
-        totalNBackMissed += block.nBackMissed;
-        totalNBackFalseAlarms += block.nBackFalseAlarms;
-        totalPMCueCorrect += block.pmCueCorrect;
-        totalPMCueMissed += block.pmCueMissed;
-        totalPMCueFalseAlarms += block.pmCueFalseAlarms; // Added
-        totalImages += block.totalImages;
-        totalPMCues += block.totalPMCues;
-        totalNBackMatches += block.totalNBackMatches;
-      });
+    // Process each block's results
+    currentSessionData.forEach((block) => {
+      totalNBackCorrect += block.nBackCorrect;
+      totalNBackMissed += block.nBackMissed;
+      totalNBackFalseAlarms += block.nBackFalseAlarms;
+      totalPMCueCorrect += block.pmCueCorrect;
+      totalPMCueMissed += block.pmCueMissed;
+      totalPMCueFalseAlarms += block.pmCueFalseAlarms;
+      totalImages += block.totalImages;
+      totalPMCues += block.totalPMCues;
+      totalNBackMatches += block.totalNBackMatches;
     });
 
-    const results = {
+    const nBackAccuracy = totalNBackMatches > 0 ? (totalNBackCorrect / totalNBackMatches * 100).toFixed(2) : '0.00';
+    const pmCueAccuracy = totalPMCues > 0 ? (totalPMCueCorrect / totalPMCues * 100).toFixed(2) : '0.00';
+
+    return {
       nBackCorrect: totalNBackCorrect,
       nBackMissed: totalNBackMissed,
       nBackFalseAlarms: totalNBackFalseAlarms,
       pmCueCorrect: totalPMCueCorrect,
       pmCueMissed: totalPMCueMissed,
-      pmCueFalseAlarms: totalPMCueFalseAlarms, // Added
+      pmCueFalseAlarms: totalPMCueFalseAlarms,
       totalImages,
       totalPMCues,
       totalNBackMatches,
-      // Accuracies will be calculated separately where this function is called
-      nBackAccuracy: '0.00', // Placeholder, will be overridden
-      pmCueAccuracy: '0.00', // Placeholder, will be overridden
+      nBackAccuracy,
+      pmCueAccuracy,
       sessionResults: currentSessionData
     };
-
-    console.log('Calculated final results (raw totals):', results);
-    return results;
   }, []);
   
-  // Handle keypress during experiment
+  // Function to move to next session or block
+  const moveToNextSession = () => {
+    if (currentSessionIndex < 2) {
+      // Move to next session in current block
+      setCurrentSessionIndex(prev => prev + 1);
+      setCurrentPhase('pmCue');
+    } else if (currentBlock < 2) {
+      // Move to first session of next block
+      setCurrentBlock(prev => prev + 1);
+      setCurrentSessionIndex(0);
+      setCurrentPhase('pmCue');
+    } else {
+      // End of experiment
+      const results = calculateFinalResults(blockResults);
+      setResults(results);
+      setIsExperimentActive(false);
+      onComplete(results);
+    }
+  };
+  
+  // Handle key press for responses
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
     if (isPaused || isLoading) return;
-    
+
     const key = e.key.toLowerCase();
 
     // Handle spacebar press after PM cues
     if (waitingForSpacebarAfterPMCues && key === ' ') {
-      console.log('Spacebar pressed after PM cues, proceeding to trials');
       setWaitingForSpacebarAfterPMCues(false);
       setShowFixation(true); // Show fixation cross before trials
       setCurrentPhase('pmCueTransitionToTrial');
@@ -713,77 +719,27 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     if (waitingForSpacebar && key === ' ') {
       setWaitingForSpacebar(false);
       
-      // Evaluate current block performance
-      const blockResults = evaluateBlockPerformance();
-      console.log('Block results before storing:', blockResults);
+      // Evaluate current session performance
+      const currentBlockPerformance = evaluateBlockPerformance();
       
-      // Store results for current block
-      setSessionResults(prev => {
-        const newResults = {
-          ...prev,
-          [currentSession]: {
-            blocks: [
-              ...prev[currentSession].blocks,
-              blockResults
-            ]
-          }
-        };
-        console.log('Updated session results:', newResults);
-        return newResults;
-      });
+      // Store results for current session
+      setBlockResults(prev => [...prev, currentBlockPerformance]);
       
-      // Reset responses for the new block
+      // Reset responses for the new session
       setResponses({});
       
-      // Move to next block or session
-      if (currentBlock < 2) {
-        // Move to next block in the same session
-        setCurrentBlock(prevBlock => prevBlock + 1);
-      } else if (currentSession === 'pleasant') {
-        // Move from pleasant to unpleasant
-        setCurrentSession('unpleasant');
-        setCurrentBlock(0);
-      } else if (currentSession === 'unpleasant') {
-        // Move from unpleasant to neutral
-        setCurrentSession('neutral');
-        setCurrentBlock(0);
-      } else {
-        // End of experiment
-        const finalResults = calculateFinalResults(sessionResults); // Pass current sessionResults state
-        console.log('Final results at experiment end:', finalResults);
-        
-        // Calculate accuracies for the final results
-        const accuratelyCalculatedResults = { ...finalResults };
-        if (accuratelyCalculatedResults.totalNBackMatches === 0 && (accuratelyCalculatedResults.nBackCorrect + accuratelyCalculatedResults.nBackMissed > 0)) {
-          accuratelyCalculatedResults.totalNBackMatches = accuratelyCalculatedResults.nBackCorrect + accuratelyCalculatedResults.nBackMissed;
-        }
-        if (accuratelyCalculatedResults.totalPMCues === 0 && (accuratelyCalculatedResults.pmCueCorrect + accuratelyCalculatedResults.pmCueMissed > 0)) {
-          accuratelyCalculatedResults.totalPMCues = accuratelyCalculatedResults.pmCueCorrect + accuratelyCalculatedResults.pmCueMissed;
-        }
-        accuratelyCalculatedResults.nBackAccuracy = accuratelyCalculatedResults.totalNBackMatches > 0
-          ? (accuratelyCalculatedResults.nBackCorrect / accuratelyCalculatedResults.totalNBackMatches * 100).toFixed(2)
-          : '0.00';
-        accuratelyCalculatedResults.pmCueAccuracy = accuratelyCalculatedResults.totalPMCues > 0
-          ? (accuratelyCalculatedResults.pmCueCorrect / accuratelyCalculatedResults.totalPMCues * 100).toFixed(2)
-          : '0.00';
-
-        setResults(accuratelyCalculatedResults);
-        setIsExperimentActive(false);
-        onComplete(accuratelyCalculatedResults);
-      }
+      // Move to next session or block
+      moveToNextSession();
       return;
     }
-    
+
     // Handle n and z keypresses during trials with fixation
     if (currentPhase === 'trial' && showFixation && isExperimentActive) {
       if (key === 'n' || key === 'z') {
-        console.log(`Recording response: ${key} for trial ${currentTrialIndex}`);
         setResponses(prev => {
           const trialResponses = prev[currentTrialIndex] || [];
           if (!trialResponses.includes(key)) {
-            const newResponses = { ...prev, [currentTrialIndex]: [...trialResponses, key] };
-            console.log('Updated responses:', newResponses);
-            return newResponses;
+            return { ...prev, [currentTrialIndex]: [...trialResponses, key] };
           }
           return prev;
         });
@@ -804,16 +760,18 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     currentPhase,
     showFixation,
     waitingForSpacebar,
-    waitingForSpacebarAfterPMCues, // Added dependency
+    waitingForSpacebarAfterPMCues,
     currentBlock,
-    currentSession,
+    currentSessionIndex,
     currentTrialIndex,
     isExperimentActive,
     isPaused,
     isLoading,
     onComplete,
     evaluateBlockPerformance,
-    calculateFinalResults
+    calculateFinalResults,
+    blockResults,
+    moveToNextSession
   ]);
   
   // Set up keypress event listener
@@ -926,103 +884,29 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     }
   };
   
-  // Calculate progress based on current session, block, and phase
+  // Calculate progress based on current block and phase
   const calculateProgress = () => {
-    const totalSessions = 3;
-    const blocksPerSession = 3; // Changed from 5 to 3
-    
-    let sessionProgress = 0;
-    if (currentSession === 'pleasant') sessionProgress = 0;
-    else if (currentSession === 'unpleasant') sessionProgress = 1;
-    else if (currentSession === 'neutral') sessionProgress = 2;
-    
-    const sessionWeight = 100 / totalSessions;
-    let blockProgress = (currentBlock / blocksPerSession) * sessionWeight;
-    
+    const totalBlocks = 3;
+    let blockProgress = (currentBlock / totalBlocks) * 100;
     let phaseProgress = 0;
     if (currentPhase === 'pmCue') {
-      phaseProgress = (currentPMCueIndex / pmCues.length) * (sessionWeight / blocksPerSession / 2);
+      phaseProgress = (currentPMCueIndex / pmCues.length) * (100 / totalBlocks / 2);
     } else if (currentPhase === 'trial') {
-      phaseProgress = ((currentTrialIndex + 1) / trials.length) * (sessionWeight / blocksPerSession / 2) + (sessionWeight / blocksPerSession / 2);
+      phaseProgress = ((currentTrialIndex + 1) / trials.length) * (100 / totalBlocks / 2) + (100 / totalBlocks / 2);
     } else if (currentPhase === 'blockEnd') {
-      phaseProgress = sessionWeight / blocksPerSession;
+      phaseProgress = 100 / totalBlocks;
     }
-    
-    return Math.min((sessionProgress * sessionWeight) + blockProgress + phaseProgress, 100);
+    return Math.min(blockProgress + phaseProgress, 100);
   };
   
-  // Get the current session title
+  // Get the current block/session title
   const getSessionTitle = () => {
     const sessionTitles = {
-      pleasant: 'Session 1',
-      unpleasant: 'Session 2',
-      neutral: 'Session 3'
+      pleasant: 'Pleasant',
+      unpleasant: 'Unpleasant',
+      neutral: 'Neutral'
     };
-    return sessionTitles[currentSession];
-  };
-  
-  // Get the current block title
-  const getBlockTitle = () => {
-    return `Block ${currentBlock + 1}`;
-  };
-  
-  // Add function to end session and show results
-  const endSessionAndShowResults = () => {
-    console.log('Ending session early...');
-    
-    let updatedSessionResultsData = sessionResults;
-
-    // First evaluate the current block if it's in progress
-    if (currentPhase === 'trial' && currentTrialIndex >= 0) {
-      console.log('Evaluating current block performance for early exit...');
-      const currentBlockPerformance = evaluateBlockPerformance();
-      console.log('Current block results (early exit):', currentBlockPerformance);
-      
-      // Store results for current block by creating an updated version of sessionResults
-      updatedSessionResultsData = {
-        ...sessionResults,
-        [currentSession]: {
-          ...sessionResults[currentSession],
-          blocks: [
-            ...(sessionResults[currentSession]?.blocks || []),
-            currentBlockPerformance
-          ]
-        }
-      };
-      // Update the main sessionResults state
-      setSessionResults(updatedSessionResultsData);
-      console.log('Updated session results state with current block (early exit):', updatedSessionResultsData);
-    }
-    
-    // Calculate final results using the potentially updated session data
-    const finalAggregatedResults = calculateFinalResults(updatedSessionResultsData);
-    console.log('Final aggregated results from calculateFinalResults (early exit):', finalAggregatedResults);
-        
-    // Prepare the complete results object with accuracies
-    const completeResults = { ...finalAggregatedResults };
-
-    // Ensure totalNBackMatches and totalPMCues are correctly summed for accuracy calculation
-    // (This might be redundant if calculateFinalResults sums them correctly, but good for safety)
-    if (completeResults.totalNBackMatches === 0 && (completeResults.nBackCorrect + completeResults.nBackMissed > 0)) {
-      completeResults.totalNBackMatches = completeResults.nBackCorrect + completeResults.nBackMissed;
-    }
-    if (completeResults.totalPMCues === 0 && (completeResults.pmCueCorrect + completeResults.pmCueMissed > 0)) {
-      completeResults.totalPMCues = completeResults.pmCueCorrect + completeResults.pmCueMissed;
-    }
-    
-    // Calculate accuracies
-    completeResults.nBackAccuracy = completeResults.totalNBackMatches > 0 
-      ? (completeResults.nBackCorrect / completeResults.totalNBackMatches * 100).toFixed(2)
-      : '0.00';
-    completeResults.pmCueAccuracy = completeResults.totalPMCues > 0
-      ? (completeResults.pmCueCorrect / completeResults.totalPMCues * 100).toFixed(2)
-      : '0.00';
-    
-    console.log('Complete results being passed to onComplete (early exit):', completeResults);
-    
-    setResults(completeResults);
-    setIsExperimentActive(false);
-    onComplete(completeResults);
+    return `Block ${currentBlock + 1}, Session ${currentSessionIndex + 1}: ${sessionTitles[currentSession]}`;
   };
   
   // If still loading, show a loading indicator
@@ -1129,7 +1013,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                 {isPaused ? 'Continue' : 'Pause'}
               </Button>
               <Button 
-                onClick={endSessionAndShowResults}
+                onClick={moveToNextSession}
                 variant="destructive"
                 size="default"
                 className="flex items-center gap-1"
@@ -1251,8 +1135,8 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                         variant={currentSession === 'pleasant' ? "default" : "outline"}
                         size="sm"
                         onClick={() => {
-                          setCurrentSession('pleasant');
                           setCurrentBlock(0);
+                          setCurrentSessionIndex(0);
                           setCurrentPhase('pmCue');
                           setCurrentPMCueIndex(0);
                           setCurrentTrialIndex(-1);
@@ -1266,8 +1150,8 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                         variant={currentSession === 'unpleasant' ? "default" : "outline"}
                         size="sm"
                         onClick={() => {
-                          setCurrentSession('unpleasant');
                           setCurrentBlock(0);
+                          setCurrentSessionIndex(0);
                           setCurrentPhase('pmCue');
                           setCurrentPMCueIndex(0);
                           setCurrentTrialIndex(-1);
@@ -1281,8 +1165,8 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                         variant={currentSession === 'neutral' ? "default" : "outline"}
                         size="sm"
                         onClick={() => {
-                          setCurrentSession('neutral');
                           setCurrentBlock(0);
+                          setCurrentSessionIndex(0);
                           setCurrentPhase('pmCue');
                           setCurrentPMCueIndex(0);
                           setCurrentTrialIndex(-1);
@@ -1303,6 +1187,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                         size="sm"
                         onClick={() => {
                           setCurrentBlock(0);
+                          setCurrentSessionIndex(0);
                           setCurrentPhase('pmCue');
                           setCurrentPMCueIndex(0);
                           setCurrentTrialIndex(-1);
@@ -1317,6 +1202,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                         size="sm"
                         onClick={() => {
                           setCurrentBlock(1);
+                          setCurrentSessionIndex(0);
                           setCurrentPhase('pmCue');
                           setCurrentPMCueIndex(0);
                           setCurrentTrialIndex(-1);
@@ -1331,6 +1217,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
                         size="sm"
                         onClick={() => {
                           setCurrentBlock(2);
+                          setCurrentSessionIndex(0);
                           setCurrentPhase('pmCue');
                           setCurrentPMCueIndex(0);
                           setCurrentTrialIndex(-1);
