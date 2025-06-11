@@ -960,7 +960,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
       </Card>
     );
   }
-  
+
   return (
     <div 
       className={`w-full max-w-4xl transition-all duration-300 ${
@@ -972,69 +972,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
         <Card className={`mb-4 p-6 ${
           isFullScreen ? 'flex-1 flex flex-col' : ''
         }`}>
-          <div className="mb-6 flex justify-between items-center">
-            <div className="flex flex-col">
-              <span className="text-2xl font-bold">{getSessionTitle()}</span>
-            </div>
-            <div className="flex gap-2">
-              <Button 
-                onClick={toggleFullScreen}
-                variant="outline" 
-                size="default"
-                className="flex items-center gap-1"
-              >
-                {isFullScreen ? (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                      <path d="M8 3v3a2 2 0 0 1-2 2H3"></path>
-                      <path d="M21 8h-3a2 2 0 0 1-2-2V3"></path>
-                      <path d="M3 16h3a2 2 0 0 1 2 2v3"></path>
-                      <path d="M16 21v-3a2 2 0 0 1 2-2h3"></path>
-                    </svg>
-                    Exit
-                  </>
-                ) : (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                      <polyline points="15 3 21 3 21 9"></polyline>
-                      <polyline points="9 21 3 21 3 15"></polyline>
-                      <line x1="21" y1="3" x2="14" y2="10"></line>
-                      <line x1="3" y1="21" x2="10" y2="14"></line>
-                    </svg>
-                    Fullscreen
-                  </>
-                )}
-              </Button>
-              <Button 
-                onClick={togglePause} 
-                variant="outline" 
-                size="default"
-              >
-                {isPaused ? 'Continue' : 'Pause'}
-              </Button>
-              <Button 
-                onClick={moveToNextSession}
-                variant="destructive"
-                size="default"
-                className="flex items-center gap-1"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                  <path d="M12 2v4"></path>
-                  <path d="M12 18v4"></path>
-                  <path d="m4.93 4.93 2.83 2.83"></path>
-                  <path d="m16.24 16.24 2.83 2.83"></path>
-                  <path d="M2 12h4"></path>
-                  <path d="M18 12h4"></path>
-                  <path d="m4.93 19.07 2.83-2.83"></path>
-                  <path d="m16.24 7.76 2.83-2.83"></path>
-                </svg>
-                End Session
-              </Button>
-            </div>
-          </div>
-          
-          <Progress value={calculateProgress()} className="h-3 mb-8" />
-          
+          {/* Title and progress bar removed as requested */}
           <div className={`min-h-[400px] flex items-center justify-center bg-gray-50 rounded-md border ${
             isFullScreen ? 'flex-1' : ''
           }`}>
@@ -1112,138 +1050,124 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
             </div>
           </div>
           
-          {/* Debug Controls */}
-          <div className="mt-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setIsDebugMode(!isDebugMode)}
-              className="mb-2"
-            >
-              {isDebugMode ? "Hide Debug Controls" : "Show Debug Controls"}
-            </Button>
-            
-            {isDebugMode && (
-              <div className="p-4 border border-dashed border-yellow-500 rounded-md bg-yellow-50">
-                <h3 className="font-bold text-yellow-800 mb-2">Debug Controls</h3>
-                
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <h4 className="font-semibold mb-1">Session</h4>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant={currentSession === 'pleasant' ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setCurrentBlock(0);
-                          setCurrentSessionIndex(0);
-                          setCurrentPhase('pmCue');
-                          setCurrentPMCueIndex(0);
-                          setCurrentTrialIndex(-1);
-                          setResponses({});
-                          setInitialized(false);
-                        }}
-                      >
-                        Pleasant
-                      </Button>
-                      <Button 
-                        variant={currentSession === 'unpleasant' ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setCurrentBlock(0);
-                          setCurrentSessionIndex(0);
-                          setCurrentPhase('pmCue');
-                          setCurrentPMCueIndex(0);
-                          setCurrentTrialIndex(-1);
-                          setResponses({});
-                          setInitialized(false);
-                        }}
-                      >
-                        Unpleasant
-                      </Button>
-                      <Button 
-                        variant={currentSession === 'neutral' ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setCurrentBlock(0);
-                          setCurrentSessionIndex(0);
-                          setCurrentPhase('pmCue');
-                          setCurrentPMCueIndex(0);
-                          setCurrentTrialIndex(-1);
-                          setResponses({});
-                          setInitialized(false);
-                        }}
-                      >
-                        Neutral
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h4 className="font-semibold mb-1">Block</h4>
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant={currentBlock === 0 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setCurrentBlock(0);
-                          setCurrentSessionIndex(0);
-                          setCurrentPhase('pmCue');
-                          setCurrentPMCueIndex(0);
-                          setCurrentTrialIndex(-1);
-                          setResponses({});
-                          setInitialized(false);
-                        }}
-                      >
-                        Block 1
-                      </Button>
-                      <Button 
-                        variant={currentBlock === 1 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setCurrentBlock(1);
-                          setCurrentSessionIndex(0);
-                          setCurrentPhase('pmCue');
-                          setCurrentPMCueIndex(0);
-                          setCurrentTrialIndex(-1);
-                          setResponses({});
-                          setInitialized(false);
-                        }}
-                      >
-                        Block 2
-                      </Button>
-                      <Button 
-                        variant={currentBlock === 2 ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => {
-                          setCurrentBlock(2);
-                          setCurrentSessionIndex(0);
-                          setCurrentPhase('pmCue');
-                          setCurrentPMCueIndex(0);
-                          setCurrentTrialIndex(-1);
-                          setResponses({});
-                          setInitialized(false);
-                        }}
-                      >
-                        Block 3
-                      </Button>
-                    </div>
+          {/* Debug Controls (F7 to toggle) */}
+          {isDebugMode && (
+            <div className="mt-4 p-4 border border-dashed border-yellow-500 rounded-md bg-yellow-50">
+              <h3 className="font-bold text-yellow-800 mb-2">Debug Controls</h3>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <h4 className="font-semibold mb-1">Session</h4>
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant={currentSession === 'pleasant' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setCurrentBlock(0);
+                        setCurrentSessionIndex(0);
+                        setCurrentPhase('pmCue');
+                        setCurrentPMCueIndex(0);
+                        setCurrentTrialIndex(-1);
+                        setResponses({});
+                        setInitialized(false);
+                      }}
+                    >
+                      Pleasant
+                    </Button>
+                    <Button 
+                      variant={currentSession === 'unpleasant' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setCurrentBlock(0);
+                        setCurrentSessionIndex(0);
+                        setCurrentPhase('pmCue');
+                        setCurrentPMCueIndex(0);
+                        setCurrentTrialIndex(-1);
+                        setResponses({});
+                        setInitialized(false);
+                      }}
+                    >
+                      Unpleasant
+                    </Button>
+                    <Button 
+                      variant={currentSession === 'neutral' ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setCurrentBlock(0);
+                        setCurrentSessionIndex(0);
+                        setCurrentPhase('pmCue');
+                        setCurrentPMCueIndex(0);
+                        setCurrentTrialIndex(-1);
+                        setResponses({});
+                        setInitialized(false);
+                      }}
+                    >
+                      Neutral
+                    </Button>
                   </div>
                 </div>
-                
-                <div className="bg-gray-100 p-2 rounded text-sm">
-                  <div><strong>Current State:</strong></div>
-                  <div>Session: {currentSession}, Block: {currentBlock + 1}, Phase: {currentPhase}</div>
-                  <div>Trial: {currentTrialIndex + 1}/{trials.length}, PM Cue: {currentPMCueIndex + 1}/{pmCues.length}</div>
-                  <div>Initialized: {initialized ? 'Yes' : 'No'}, Active: {isExperimentActive ? 'Yes' : 'No'}</div>
+                <div>
+                  <h4 className="font-semibold mb-1">Block</h4>
+                  <div className="flex space-x-2">
+                    <Button 
+                      variant={currentBlock === 0 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setCurrentBlock(0);
+                        setCurrentSessionIndex(0);
+                        setCurrentPhase('pmCue');
+                        setCurrentPMCueIndex(0);
+                        setCurrentTrialIndex(-1);
+                        setResponses({});
+                        setInitialized(false);
+                      }}
+                    >
+                      Block 1
+                    </Button>
+                    <Button 
+                      variant={currentBlock === 1 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setCurrentBlock(1);
+                        setCurrentSessionIndex(0);
+                        setCurrentPhase('pmCue');
+                        setCurrentPMCueIndex(0);
+                        setCurrentTrialIndex(-1);
+                        setResponses({});
+                        setInitialized(false);
+                      }}
+                    >
+                      Block 2
+                    </Button>
+                    <Button 
+                      variant={currentBlock === 2 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        setCurrentBlock(2);
+                        setCurrentSessionIndex(0);
+                        setCurrentPhase('pmCue');
+                        setCurrentPMCueIndex(0);
+                        setCurrentTrialIndex(-1);
+                        setResponses({});
+                        setInitialized(false);
+                      }}
+                    >
+                      Block 3
+                    </Button>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+              <div className="bg-gray-100 p-2 rounded text-sm">
+                <div><strong>Current State:</strong></div>
+                <div>Session: {currentSession}, Block: {currentBlock + 1}, Phase: {currentPhase}</div>
+                <div>Trial: {currentTrialIndex + 1}/{trials.length}, PM Cue: {currentPMCueIndex + 1}/{pmCues.length}</div>
+                <div>Initialized: {initialized ? 'Yes' : 'No'}, Active: {isExperimentActive ? 'Yes' : 'No'}</div>
+              </div>
+            </div>
+          )}
         </Card>
       </ErrorBoundary>
     </div>
   );
-};
+}
 
 export default ExperimentTask;
