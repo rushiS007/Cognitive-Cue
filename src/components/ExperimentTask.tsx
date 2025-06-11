@@ -99,31 +99,48 @@ console.log('Generated image paths:', {
 // Define PM cues for each category and block - 6 per category per block
 const generatePMCuesByBlock = (category: string) => {
   // Create arrays for each block
+  const toSessionType = (cat: string): SessionType => {
+    if (cat === 'pleasant' || cat === 'neutral' || cat === 'unpleasant') return cat;
+    throw new Error('Invalid session type');
+  };
   const block1Cues = Array.from({ length: 6 }, (_, i) => ({
     id: `pmcue-${category}-block1-${i + 1}`,
-    type: category,
-    isPMCue: true,
+    type: toSessionType(category),
+    isPMCue: true as const,
     src: `/images/pmcues/${category}cues/block1/${category}cue${i + 1}.jpg`
   }));
-  
   const block2Cues = Array.from({ length: 6 }, (_, i) => ({
     id: `pmcue-${category}-block2-${i + 1}`,
-    type: category,
-    isPMCue: true,
+    type: toSessionType(category),
+    isPMCue: true as const,
     src: `/images/pmcues/${category}cues/block2/${category}cue${i + 1}.jpg`
   }));
-  
   const block3Cues = Array.from({ length: 6 }, (_, i) => ({
     id: `pmcue-${category}-block3-${i + 1}`,
-    type: category,
-    isPMCue: true,
+    type: toSessionType(category),
+    isPMCue: true as const,
     src: `/images/pmcues/${category}cues/block3/${category}cue${i + 1}.jpg`
   }));
-  
   return { block1: block1Cues, block2: block2Cues, block3: block3Cues };
 };
 
 // Generate PM cues for each category
+
+// Types for PM Cue and Trial
+interface PMCue {
+  id: string;
+  type: SessionType;
+  isPMCue: true;
+  src: string;
+}
+
+interface Trial {
+  id: string;
+  type: SessionType;
+  isPMCue: boolean;
+  src: string;
+}
+
 const pleasantPMCuesByBlock = generatePMCuesByBlock('pleasant');
 const neutralPMCuesByBlock = generatePMCuesByBlock('neutral');
 const unpleasantPMCuesByBlock = generatePMCuesByBlock('unpleasant');
@@ -138,13 +155,16 @@ type SessionType = 'pleasant' | 'neutral' | 'unpleasant';
 type ExperimentPhase = 'pmCue' | 'trial' | 'blockEnd' | 'pmCueTransitionToTrial';
 
 // Prepare a single session's trials
-const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPractice: boolean = false) => {
+const prepareSessionTrials = (
+  sessionType: SessionType,
+  blockIndex: number,
+  isPractice: boolean = false
+): { pmCues: PMCue[]; trials: Trial[] } => {
   try {
     console.log('Starting prepareSessionTrials with:', { sessionType, blockIndex });
-    
     // Get the appropriate image array and PM cues for this session type
     let imageArray: string[] = [];
-    let pmCuesForCurrentBlock: any[] = [];
+    let pmCuesForCurrentBlock: PMCue[] = [];
 
     if (sessionType === 'pleasant') {
       console.log('Using pleasant images and cues');
@@ -209,7 +229,7 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
     const pmCues = pmCuesForCurrentBlock;
     
     // Create regular images for trials
-    const regularImages = imageArray.map((src, index) => ({
+    const regularImages: Trial[] = imageArray.map((src, index) => ({
       id: `${sessionType}-${index}-${blockIndex}`,
       type: sessionType,
       isPMCue: false,
@@ -217,7 +237,7 @@ const prepareSessionTrials = (sessionType: SessionType, blockIndex: number, isPr
     }));
     
     // Create the trials array
-    const trials = [];
+    const trials: Trial[] = [];
     
     if (isPractice) {
       console.log('Preparing practice trials');
@@ -341,8 +361,8 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   const [currentPhase, setCurrentPhase] = useState<ExperimentPhase>('pmCue');
   
   // PM cues and trials for current block
-  const [pmCues, setPMCues] = useState<any[]>([]);
-  const [trials, setTrials] = useState<any[]>([]);
+  const [pmCues, setPMCues] = useState<PMCue[]>([]);
+  const [trials, setTrials] = useState<Trial[]>([]);
   
   // Current indices
   const [currentPMCueIndex, setCurrentPMCueIndex] = useState(0);
@@ -371,19 +391,32 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   // Track results for each block
   const [blockResults, setBlockResults] = useState<BlockResult[]>([]);
   
-  const [results, setResults] = useState({
+  const [results, setResults] = useState<{
+    nBackCorrect: number;
+    nBackMissed: number;
+    nBackFalseAlarms: number;
+    pmCueCorrect: number;
+    pmCueMissed: number;
+    pmCueFalseAlarms: number;
+    totalImages: number;
+    totalPMCues: number;
+    totalNBackMatches: number;
+    nBackAccuracy: string;
+    pmCueAccuracy: string;
+    sessionResults: BlockResult[];
+  }>({
     nBackCorrect: 0,
     nBackMissed: 0,
     nBackFalseAlarms: 0,
     pmCueCorrect: 0,
     pmCueMissed: 0,
-    pmCueFalseAlarms: 0, // Added
+    pmCueFalseAlarms: 0,
     totalImages: 0,
     totalPMCues: 0,
     totalNBackMatches: 0,
     nBackAccuracy: '0.00',
     pmCueAccuracy: '0.00',
-    sessionResults: {} as any
+    sessionResults: []
   });
   
   const [startTime, setStartTime] = useState(0);
@@ -472,9 +505,11 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   }, []);
   
   // Initialize first block
-  useEffect(() => {
-    initializeBlock();
-  }, [currentSession, currentBlock]);
+useEffect(() => {
+  initializeBlock();
+  // The dependency array should not include initializeBlock directly, since it is defined after this effect and is stable due to useCallback.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [currentSession, currentBlock]);
   
   // Separate initialization function for reuse
   const initializeBlock = useCallback(() => {
@@ -887,7 +922,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   // Calculate progress based on current block and phase
   const calculateProgress = () => {
     const totalBlocks = 3;
-    let blockProgress = (currentBlock / totalBlocks) * 100;
+    const blockProgress = (currentBlock / totalBlocks) * 100;
     let phaseProgress = 0;
     if (currentPhase === 'pmCue') {
       phaseProgress = (currentPMCueIndex / pmCues.length) * (100 / totalBlocks / 2);
