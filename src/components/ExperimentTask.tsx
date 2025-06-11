@@ -963,7 +963,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
 
   return (
     <div 
-      className={`w-full max-w-4xl transition-all duration-300 ${
+      className={`min-h-screen w-full flex items-center justify-center bg-white transition-all duration-300 ${
         isFullScreen ? 'max-w-full h-screen p-4 flex flex-col' : ''
       }`} 
       ref={containerRef}
@@ -1003,12 +1003,12 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
 
               {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'pmCue' && currentPMCueIndex < pmCues.length && pmCues[currentPMCueIndex] && (
                 <div className="flex flex-col items-center justify-center h-full">
-                  <img 
-                    src={pmCues[currentPMCueIndex].src} 
-                    alt={`PM Cue ${currentPMCueIndex + 1}`} 
-                    className="max-h-[350px] max-w-full object-contain rounded-lg shadow-md"
+                  <img
+                    src={pmCues[currentPMCueIndex].src}
+                    alt={pmCues[currentPMCueIndex].id}
+                    className="rounded-lg object-contain shadow-md"
+                    style={{ width: '600px', height: '450px', maxWidth: '95vw', maxHeight: '80vh' }}
                   />
-                  
                 </div>
               )}
               
@@ -1020,10 +1020,11 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
               
               {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'trial' && !showFixation && trials.length > 0 && currentTrialIndex < trials.length && trials[currentTrialIndex] && (
                 <div className="flex flex-col items-center justify-center h-full">
-                  <img 
-                    src={trials[currentTrialIndex].src} 
-                    alt={`Trial ${currentTrialIndex + 1}`} 
-                    className="max-h-[350px] max-w-full object-contain rounded-lg shadow-md" 
+                  <img
+                    src={trials[currentTrialIndex].src}
+                    alt={trials[currentTrialIndex].id}
+                    className="rounded-lg object-contain shadow-md"
+                    style={{ width: '600px', height: '450px', maxWidth: '95vw', maxHeight: '80vh' }}
                   />
                   {isDebugMode && (
                     <div className="mt-2 text-xs bg-gray-200 p-1 rounded">
