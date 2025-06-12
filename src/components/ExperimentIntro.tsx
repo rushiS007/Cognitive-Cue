@@ -112,19 +112,19 @@ const ExperimentIntro = ({ onStart }: ExperimentIntroProps) => {
       <CardContent className={`space-y-6 ${isFullScreen ? 'flex flex-col flex-1 justify-center' : ''}`}>
         <div className={`space-y-4 ${isFullScreen ? 'max-w-3xl mx-auto text-lg' : ''}`}>
           <p>
-            In this task, you will see images. Each image will be shown for a few seconds. It will be followed by a cross in the centre of the screen. You need to decide if you saw the same image being displayed back to back.
+            In this task, you will see images. Each image will be shown for a few seconds. It will be followed by a cross (+) in the centre of the screen. You need to decide if you saw the same image being repeated simultaneously back to back.
           </p>
           
           <p>
-            If you see the image being repeated, you press the "n" key.
+            If you see the image being repeated, you need to press the "n" key.
           </p>
           
           <p>
-            In the beginning, few images will be shown that you have to remember and identify. If you see the images during the task, press the "z" key.
+            In the beginning, few images will be shown that you have to remember and identify. If you see the images shown in the beginning during the task, press the 'z' key.
           </p>
           
           <p>
-            Make sure to make a response only when the cross appears.
+            Make sure to make response only when the '+' appears.
           </p>
         </div>
 
