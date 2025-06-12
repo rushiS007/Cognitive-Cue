@@ -998,210 +998,211 @@ useEffect(() => {
 
   return (
     <div 
-      className={`min-h-screen w-full flex items-center justify-center bg-white transition-all duration-300 ${
-        isFullScreen ? 'max-w-full h-screen p-4 flex flex-col' : ''
-      }`} 
-      ref={containerRef}
+      ref={containerRef} 
+      className="min-h-screen w-full flex items-center justify-center" // Removed bg-white and p-4
     >
-      <ErrorBoundary>
-        <Card className={`mb-4 p-6 ${
-          isFullScreen ? 'flex-1 flex flex-col' : ''
-        }`}>
-          {/* Title and progress bar removed as requested */}
-          <div className={`min-h-[400px] flex items-center justify-center bg-gray-50 rounded-md border ${
-            isFullScreen ? 'flex-1' : ''
+      {/* {isLoading && <LoadingSpinner />} */}
+      {!isLoading && isExperimentActive && initialized && (
+        <ErrorBoundary>
+          <Card className={`mb-4 p-0 border-none bg-transparent shadow-none ${ // MODIFIED: p-6 to p-0, added border-none, bg-transparent, shadow-none
+            isFullScreen ? 'flex-1 flex flex-col' : ''
           }`}>
-            <ErrorBoundary fallback={
-              <div className="p-4 text-center">
-                <p className="text-red-600 mb-2">Error displaying content</p>
-                <Button 
-                  onClick={() => window.location.reload()}
-                  size="sm"
-                >
-                  Reload Page
-                </Button>
+            {/* Title and progress bar removed as requested */}
+            <div className={`min-h-[400px] flex items-center justify-center ${ // MODIFIED: removed bg-gray-50, rounded-md, border
+              isFullScreen ? 'flex-1' : ''
+            }`}>
+              <ErrorBoundary fallback={
+                <div className="p-4 text-center">
+                  <p className="text-red-600 mb-2">Error displaying content</p>
+                  <Button 
+                    onClick={() => window.location.reload()}
+                    size="sm"
+                  >
+                    Reload Page
+                  </Button>
+                </div>
+              }>
+                {/* Main experiment display area */}
+                {isPaused && (
+                  <div className="text-center">
+                    <h3 className="text-2xl font-semibold mb-4">Experiment Paused</h3>
+                    <p className="text-lg">Press the "Continue" button to resume.</p>
+                  </div>
+                )}
+
+                {!isPaused && waitingForSpacebarAfterPMCues && (
+                  <div className="text-center p-8">
+                    <p className="text-lg">Press <strong>SPACEBAR</strong> to continue to the images.</p>
+                  </div>
+                )}
+
+                {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'pmCue' && currentPMCueIndex < pmCues.length && pmCues[currentPMCueIndex] && (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <img
+                      src={pmCues[currentPMCueIndex].src}
+                      alt={pmCues[currentPMCueIndex].id}
+                      className="rounded-lg object-contain shadow-md"
+                      style={{ width: '600px', height: '450px', maxWidth: '95vw', maxHeight: '80vh' }}
+                    />
+                  </div>
+                )}
+                
+                {!isPaused && !waitingForSpacebarAfterPMCues && (currentPhase === 'trial' || currentPhase === 'pmCueTransitionToTrial') && showFixation && (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-6xl font-bold text-gray-700">+</div>
+                  </div>
+                )}
+                
+                {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'trial' && !showFixation && trials.length > 0 && currentTrialIndex < trials.length && trials[currentTrialIndex] && (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <img
+                      src={trials[currentTrialIndex].src}
+                      alt={trials[currentTrialIndex].id}
+                      className="rounded-lg object-contain shadow-md"
+                      style={{ width: '600px', height: '450px', maxWidth: '95vw', maxHeight: '80vh' }}
+                    />
+                    {isDebugMode && (
+                      <div className="mt-2 text-xs bg-gray-200 p-1 rounded">
+                        Trial: {currentTrialIndex + 1}/{trials.length} | ID: {trials[currentTrialIndex].id} | PM: {trials[currentTrialIndex].isPMCue ? 'Yes' : 'No'} | 1-Back: {isOneBackMatch(currentTrialIndex) ? 'Yes' : 'No'}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'blockEnd' && waitingForSpacebar && (
+                  <div className="text-center p-8">
+                    <h3 className="text-xl font-medium mb-4">Block Complete!</h3>
+                    <p className="text-lg">Press <strong>SPACEBAR</strong> to continue to the next block or session.</p>
+                  </div>
+                )}
+              </ErrorBoundary>
+            </div>
+            
+            <div className="mt-6 flex justify-between items-center">
+              <div className="text-base">
+                {currentTrialIndex >= 0 && responses[currentTrialIndex]?.length > 0 && showFixation ? (
+                  <span className="text-green-600">Response recorded</span>
+                ) : null}
               </div>
-            }>
-              {/* Main experiment display area */}
-              {isPaused && (
-                <div className="text-center">
-                  <h3 className="text-2xl font-semibold mb-4">Experiment Paused</h3>
-                  <p className="text-lg">Press the "Continue" button to resume.</p>
-                </div>
-              )}
-
-              {!isPaused && waitingForSpacebarAfterPMCues && (
-                <div className="text-center p-8">
-                  <p className="text-lg">Press <strong>SPACEBAR</strong> to continue to the images.</p>
-                </div>
-              )}
-
-              {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'pmCue' && currentPMCueIndex < pmCues.length && pmCues[currentPMCueIndex] && (
-                <div className="flex flex-col items-center justify-center h-full">
-                  <img
-                    src={pmCues[currentPMCueIndex].src}
-                    alt={pmCues[currentPMCueIndex].id}
-                    className="rounded-lg object-contain shadow-md"
-                    style={{ width: '600px', height: '450px', maxWidth: '95vw', maxHeight: '80vh' }}
-                  />
-                </div>
-              )}
-              
-              {!isPaused && !waitingForSpacebarAfterPMCues && (currentPhase === 'trial' || currentPhase === 'pmCueTransitionToTrial') && showFixation && (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-6xl font-bold text-gray-700">+</div>
-                </div>
-              )}
-              
-              {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'trial' && !showFixation && trials.length > 0 && currentTrialIndex < trials.length && trials[currentTrialIndex] && (
-                <div className="flex flex-col items-center justify-center h-full">
-                  <img
-                    src={trials[currentTrialIndex].src}
-                    alt={trials[currentTrialIndex].id}
-                    className="rounded-lg object-contain shadow-md"
-                    style={{ width: '600px', height: '450px', maxWidth: '95vw', maxHeight: '80vh' }}
-                  />
-                  {isDebugMode && (
-                    <div className="mt-2 text-xs bg-gray-200 p-1 rounded">
-                      Trial: {currentTrialIndex + 1}/{trials.length} | ID: {trials[currentTrialIndex].id} | PM: {trials[currentTrialIndex].isPMCue ? 'Yes' : 'No'} | 1-Back: {isOneBackMatch(currentTrialIndex) ? 'Yes' : 'No'}
+            </div>
+            
+            {/* Debug Controls (F7 to toggle) */}
+            {isDebugMode && (
+              <div className="mt-4 p-4 border border-dashed border-yellow-500 rounded-md bg-yellow-50">
+                <h3 className="font-bold text-yellow-800 mb-2">Debug Controls</h3>
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <h4 className="font-semibold mb-1">Session</h4>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant={currentSession === 'pleasant' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentBlock(0);
+                          setCurrentSessionIndex(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Pleasant
+                      </Button>
+                      <Button 
+                        variant={currentSession === 'unpleasant' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentBlock(0);
+                          setCurrentSessionIndex(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Unpleasant
+                      </Button>
+                      <Button 
+                        variant={currentSession === 'neutral' ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentBlock(0);
+                          setCurrentSessionIndex(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Neutral
+                      </Button>
                     </div>
-                  )}
-                </div>
-              )}
-              
-              {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'blockEnd' && waitingForSpacebar && (
-                <div className="text-center p-8">
-                  <h3 className="text-xl font-medium mb-4">Block Complete!</h3>
-                  <p className="text-lg">Press <strong>SPACEBAR</strong> to continue to the next block or session.</p>
-                </div>
-              )}
-            </ErrorBoundary>
-          </div>
-          
-          <div className="mt-6 flex justify-between items-center">
-            <div className="text-base">
-              {currentTrialIndex >= 0 && responses[currentTrialIndex]?.length > 0 && showFixation ? (
-                <span className="text-green-600">Response recorded</span>
-              ) : null}
-            </div>
-          </div>
-          
-          {/* Debug Controls (F7 to toggle) */}
-          {isDebugMode && (
-            <div className="mt-4 p-4 border border-dashed border-yellow-500 rounded-md bg-yellow-50">
-              <h3 className="font-bold text-yellow-800 mb-2">Debug Controls</h3>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <h4 className="font-semibold mb-1">Session</h4>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant={currentSession === 'pleasant' ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setCurrentBlock(0);
-                        setCurrentSessionIndex(0);
-                        setCurrentPhase('pmCue');
-                        setCurrentPMCueIndex(0);
-                        setCurrentTrialIndex(-1);
-                        setResponses({});
-                        setInitialized(false);
-                      }}
-                    >
-                      Pleasant
-                    </Button>
-                    <Button 
-                      variant={currentSession === 'unpleasant' ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setCurrentBlock(0);
-                        setCurrentSessionIndex(0);
-                        setCurrentPhase('pmCue');
-                        setCurrentPMCueIndex(0);
-                        setCurrentTrialIndex(-1);
-                        setResponses({});
-                        setInitialized(false);
-                      }}
-                    >
-                      Unpleasant
-                    </Button>
-                    <Button 
-                      variant={currentSession === 'neutral' ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setCurrentBlock(0);
-                        setCurrentSessionIndex(0);
-                        setCurrentPhase('pmCue');
-                        setCurrentPMCueIndex(0);
-                        setCurrentTrialIndex(-1);
-                        setResponses({});
-                        setInitialized(false);
-                      }}
-                    >
-                      Neutral
-                    </Button>
+                  </div>
+                  <div>
+                    <h4 className="font-semibold mb-1">Block</h4>
+                    <div className="flex space-x-2">
+                      <Button 
+                        variant={currentBlock === 0 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentBlock(0);
+                          setCurrentSessionIndex(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Block 1
+                      </Button>
+                      <Button 
+                        variant={currentBlock === 1 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentBlock(1);
+                          setCurrentSessionIndex(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Block 2
+                      </Button>
+                      <Button 
+                        variant={currentBlock === 2 ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentBlock(2);
+                          setCurrentSessionIndex(0);
+                          setCurrentPhase('pmCue');
+                          setCurrentPMCueIndex(0);
+                          setCurrentTrialIndex(-1);
+                          setResponses({});
+                          setInitialized(false);
+                        }}
+                      >
+                        Block 3
+                      </Button>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <h4 className="font-semibold mb-1">Block</h4>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant={currentBlock === 0 ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setCurrentBlock(0);
-                        setCurrentSessionIndex(0);
-                        setCurrentPhase('pmCue');
-                        setCurrentPMCueIndex(0);
-                        setCurrentTrialIndex(-1);
-                        setResponses({});
-                        setInitialized(false);
-                      }}
-                    >
-                      Block 1
-                    </Button>
-                    <Button 
-                      variant={currentBlock === 1 ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setCurrentBlock(1);
-                        setCurrentSessionIndex(0);
-                        setCurrentPhase('pmCue');
-                        setCurrentPMCueIndex(0);
-                        setCurrentTrialIndex(-1);
-                        setResponses({});
-                        setInitialized(false);
-                      }}
-                    >
-                      Block 2
-                    </Button>
-                    <Button 
-                      variant={currentBlock === 2 ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => {
-                        setCurrentBlock(2);
-                        setCurrentSessionIndex(0);
-                        setCurrentPhase('pmCue');
-                        setCurrentPMCueIndex(0);
-                        setCurrentTrialIndex(-1);
-                        setResponses({});
-                        setInitialized(false);
-                      }}
-                    >
-                      Block 3
-                    </Button>
-                  </div>
+                <div className="bg-gray-100 p-2 rounded text-sm">
+                  <div><strong>Current State:</strong></div>
+                  <div>Session: {currentSession}, Block: {currentBlock + 1}, Phase: {currentPhase}</div>
+                  <div>Trial: {currentTrialIndex + 1}/{trials.length}, PM Cue: {currentPMCueIndex + 1}/{pmCues.length}</div>
+                  <div>Initialized: {initialized ? 'Yes' : 'No'}, Active: {isExperimentActive ? 'Yes' : 'No'}</div>
                 </div>
               </div>
-              <div className="bg-gray-100 p-2 rounded text-sm">
-                <div><strong>Current State:</strong></div>
-                <div>Session: {currentSession}, Block: {currentBlock + 1}, Phase: {currentPhase}</div>
-                <div>Trial: {currentTrialIndex + 1}/{trials.length}, PM Cue: {currentPMCueIndex + 1}/{pmCues.length}</div>
-                <div>Initialized: {initialized ? 'Yes' : 'No'}, Active: {isExperimentActive ? 'Yes' : 'No'}</div>
-              </div>
-            </div>
-          )}
-        </Card>
-      </ErrorBoundary>
+            )}
+          </Card>
+        </ErrorBoundary>
+      )}
     </div>
   );
 }
