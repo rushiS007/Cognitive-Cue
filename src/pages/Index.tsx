@@ -20,7 +20,8 @@ const Index = () => {
     totalNBackMatches: 0,
     nBackAccuracy: '0.00',
     pmCueAccuracy: '0.00',
-    sessionResults: {}
+    sessionResults: {},
+    sessionWiseResults: {} // Added
   });
 
   const startExperiment = () => {
@@ -47,7 +48,8 @@ const Index = () => {
       totalNBackMatches: 0,
       nBackAccuracy: '0.00',
       pmCueAccuracy: '0.00',
-      sessionResults: {}
+      sessionResults: {},
+      sessionWiseResults: {} // Added
     });
   };
 

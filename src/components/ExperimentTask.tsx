@@ -169,7 +169,7 @@ const prepareSessionTrials = (
     if (sessionType === 'pleasant') {
       console.log('Using pleasant images and cues');
       // Get 70 random images from pleasant category
-      imageArray = [...pleasantImages].sort(() => Math.random() - 0.5).slice(0, 70);
+      imageArray = [...pleasantImages].sort(() => Math.random() - 0.5).slice(0, 20);
       
       // Use different cues for each block from organized folders
       if (blockIndex === 0) {
@@ -182,7 +182,7 @@ const prepareSessionTrials = (
     } else if (sessionType === 'neutral') {
       console.log('Using neutral images and cues');
       // Get 70 random images from neutral category
-      imageArray = [...neutralImages].sort(() => Math.random() - 0.5).slice(0, 70);
+      imageArray = [...neutralImages].sort(() => Math.random() - 0.5).slice(0, 20);
       
       // Use different cues for each block from organized folders
       if (blockIndex === 0) {
@@ -195,7 +195,7 @@ const prepareSessionTrials = (
     } else if (sessionType === 'unpleasant') {
       console.log('Using unpleasant images and cues');
       // Get 70 random images from unpleasant category
-      imageArray = [...unpleasantImages].sort(() => Math.random() - 0.5).slice(0, 70);
+      imageArray = [...unpleasantImages].sort(() => Math.random() - 0.5).slice(0, 20);
       
       // Use different cues for each block from organized folders
       if (blockIndex === 0) {
@@ -241,15 +241,15 @@ const prepareSessionTrials = (
     
     if (isPractice) {
       console.log('Preparing practice trials');
-      // For practice trials, just create 15 random trials with some n-back matches
-      const practiceImages = [...regularImages].sort(() => Math.random() - 0.5).slice(0, 15);
+      // For practice trials, just create 7 random trials with some n-back matches
+      const practiceImages = [...regularImages].sort(() => Math.random() - 0.5).slice(0, 7);
       trials.push(...practiceImages);
       
-      // Add 5 n-back matches at random positions
+      // Add 3 n-back matches at random positions
       let nBackCount = 0;
       const usedForNBack = new Set<number>();
       
-      while (nBackCount < 5) {
+      while (nBackCount < 3) {
         const insertPosition = Math.floor(Math.random() * (trials.length - 1)) + 1;
         const imageToRepeat = trials[insertPosition - 1];
         const imageIndex = practiceImages.findIndex(img => img.id === imageToRepeat.id);
@@ -265,11 +265,11 @@ const prepareSessionTrials = (
       console.log('Preparing main experiment trials');
       
       // Determine number of n-back matches based on block index
-      const nBackMatchesPerBlock = [23, 20, 25];
+      const nBackMatchesPerBlock = [2, 2, 2];
       const nBackMatches = nBackMatchesPerBlock[blockIndex];
       
       // Calculate unique images needed (70 total - PM cues - n-back matches)
-      const uniqueImagesNeeded = 70 - 6 - nBackMatches;
+      const uniqueImagesNeeded = 20 - 6 - nBackMatches;
       
       // First, create a sequence of unique images
       const uniqueImages = [...regularImages].slice(0, uniqueImagesNeeded);
@@ -374,6 +374,10 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   const [waitingForSpacebarAfterPMCues, setWaitingForSpacebarAfterPMCues] = useState(false); // New state
   const [responses, setResponses] = useState<{[key: number]: string[]}>({});
   
+  // Practice/main phase state
+  const [isPractice, setIsPractice] = useState(true);
+  const [waitingToStartMain, setWaitingToStartMain] = useState(false);
+  
   // Define the type for block results
   type BlockResult = {
     nBackCorrect: number;
@@ -404,6 +408,7 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     nBackAccuracy: string;
     pmCueAccuracy: string;
     sessionResults: BlockResult[];
+    sessionWiseResults: Record<string, { nBackCorrect: number; nBackMissed: number; nBackFalseAlarms: number; pmCueCorrect: number; pmCueMissed: number; pmCueFalseAlarms: number; }>;
   }>({
     nBackCorrect: 0,
     nBackMissed: 0,
@@ -416,7 +421,8 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
     totalNBackMatches: 0,
     nBackAccuracy: '0.00',
     pmCueAccuracy: '0.00',
-    sessionResults: []
+    sessionResults: [],
+    sessionWiseResults: {}
   });
   
   const [startTime, setStartTime] = useState(0);
@@ -429,6 +435,9 @@ const ExperimentTask = ({ onComplete }: ExperimentTaskProps) => {
   
   // Reference to the container element for fullscreen
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Add state to track if response timeout is active
+  const [responseTimeoutActive, setResponseTimeoutActive] = useState(false);
   
   // Toggle fullscreen mode
   const toggleFullScreen = () => {
@@ -527,7 +536,7 @@ useEffect(() => {
             const { pmCues: blockPMCues, trials: blockTrials } = prepareSessionTrials(
               currentSession, 
               currentBlock,
-              false // Always false now since we removed practice
+              isPractice
             );
             
             console.log(`Session preparation completed:`, {
@@ -614,7 +623,7 @@ useEffect(() => {
       toast.error('Error initializing experiment. Please try again.');
       setIsLoading(false);
     }
-  }, [currentSession, currentBlock]);
+  }, [currentSession, currentBlock, isPractice]);
   
   // Function to check if current trial is a 1-back match
   const isOneBackMatch = useCallback((index: number) => {
@@ -700,6 +709,27 @@ useEffect(() => {
     const nBackAccuracy = totalNBackMatches > 0 ? (totalNBackCorrect / totalNBackMatches * 100).toFixed(2) : '0.00';
     const pmCueAccuracy = totalPMCues > 0 ? (totalPMCueCorrect / totalPMCues * 100).toFixed(2) : '0.00';
 
+    // Group results by sessionType (neutral, pleasant, unpleasant)
+    const sessionWise: Record<string, { nBackCorrect: number; nBackMissed: number; nBackFalseAlarms: number; pmCueCorrect: number; pmCueMissed: number; pmCueFalseAlarms: number; }> = {};
+    currentSessionData.forEach((block) => {
+      if (!sessionWise[block.sessionType]) {
+        sessionWise[block.sessionType] = {
+          nBackCorrect: 0,
+          nBackMissed: 0,
+          nBackFalseAlarms: 0,
+          pmCueCorrect: 0,
+          pmCueMissed: 0,
+          pmCueFalseAlarms: 0,
+        };
+      }
+      sessionWise[block.sessionType].nBackCorrect += block.nBackCorrect;
+      sessionWise[block.sessionType].nBackMissed += block.nBackMissed;
+      sessionWise[block.sessionType].nBackFalseAlarms += block.nBackFalseAlarms;
+      sessionWise[block.sessionType].pmCueCorrect += block.pmCueCorrect;
+      sessionWise[block.sessionType].pmCueMissed += block.pmCueMissed;
+      sessionWise[block.sessionType].pmCueFalseAlarms += block.pmCueFalseAlarms;
+    });
+
     return {
       nBackCorrect: totalNBackCorrect,
       nBackMissed: totalNBackMissed,
@@ -712,7 +742,8 @@ useEffect(() => {
       totalNBackMatches,
       nBackAccuracy,
       pmCueAccuracy,
-      sessionResults: currentSessionData
+      sessionResults: currentSessionData,
+      sessionWiseResults: sessionWise
     };
   }, []);
   
@@ -742,6 +773,15 @@ useEffect(() => {
 
     const key = e.key.toLowerCase();
 
+    // Handle spacebar to start main task after practice
+    if (waitingToStartMain && key === ' ') {
+      setIsPractice(false);
+      setIsLoading(false);
+      setWaitingToStartMain(false);
+      setInitialized(false); // This will trigger initializeBlock again with isPractice = false
+      return;
+    }
+    
     // Handle spacebar press after PM cues
     if (waitingForSpacebarAfterPMCues && key === ' ') {
       setWaitingForSpacebarAfterPMCues(false);
@@ -769,7 +809,7 @@ useEffect(() => {
     }
 
     // Handle n and z keypresses during trials with fixation
-    if (currentPhase === 'trial' && showFixation && isExperimentActive) {
+    if (currentPhase === 'trial' && showFixation && isExperimentActive && !responseTimeoutActive) {
       if (key === 'n' || key === 'z') {
         setResponses(prev => {
           const trialResponses = prev[currentTrialIndex] || [];
@@ -778,7 +818,8 @@ useEffect(() => {
           }
           return prev;
         });
-        // Keep fixation cross for 500ms after response, then advance
+        setResponseTimeoutActive(true); // Set flag so auto-timer doesn't run
+        // Keep fixation cross for 5000ms after response, then advance
         setTimeout(() => {
           setShowFixation(false);
           setCurrentTrialIndex(prevIndex => prevIndex + 1);
@@ -788,7 +829,8 @@ useEffect(() => {
             delete newResponses[currentTrialIndex + 1];
             return newResponses;
           });
-        }, 500);
+          setResponseTimeoutActive(false); // Reset flag after advancing
+        }, 100);
       }
     }
   }, [
@@ -806,7 +848,9 @@ useEffect(() => {
     evaluateBlockPerformance,
     calculateFinalResults,
     blockResults,
-    moveToNextSession
+    moveToNextSession,
+    responseTimeoutActive,
+    waitingToStartMain
   ]);
   
   // Set up keypress event listener
@@ -824,14 +868,14 @@ useEffect(() => {
     }
     
     // PM Cue phase - showing the PM cues at start of block
-    if (currentPhase === 'pmCue') {
+    if (!isPractice && currentPhase === 'pmCue') {
       if (currentPMCueIndex < pmCues.length) {
         // Show current PM cue for 2 seconds then move to next
         console.log(`Showing PM cue ${currentPMCueIndex + 1} of ${pmCues.length}`);
         
         const pmCueTimer = setTimeout(() => {
           setCurrentPMCueIndex(prevIndex => prevIndex + 1);
-        }, 2000);
+        }, 200);
         
         return () => clearTimeout(pmCueTimer);
       } else {
@@ -841,6 +885,10 @@ useEffect(() => {
         // No automatic transition here, handled by spacebar press
         return; 
       }
+    }
+    else if (isPractice && currentPhase === 'pmCue') {
+      setWaitingForSpacebarAfterPMCues(true);
+      return; 
     }
 
     // New phase to handle transition from PM Cues to Trials after spacebar
@@ -861,6 +909,11 @@ useEffect(() => {
     // Trial phase - the actual experiment with fixation crosses
     if (currentPhase === 'trial') {
       if (currentTrialIndex >= trials.length) {
+        // If practice just finished, show waiting screen for main task
+        if (isPractice) {
+          setWaitingToStartMain(true);
+          return;
+        }
         // End of block
         console.log('End of block reached');
         setCurrentPhase('blockEnd');
@@ -870,7 +923,7 @@ useEffect(() => {
       
       if (!showFixation) {
         // Show image for 1500ms for n-back task, 2000ms for PM cues
-        const imageDuration = trials[currentTrialIndex]?.isPMCue ? 2000 : 1500;
+        const imageDuration = trials[currentTrialIndex]?.isPMCue ? 200 : 150;
         console.log(`Showing trial ${currentTrialIndex + 1} of ${trials.length}`);
         
         const imageTimer = setTimeout(() => {
@@ -880,20 +933,27 @@ useEffect(() => {
         return () => clearTimeout(imageTimer);
       } else {
         // Show fixation for 1500ms then automatically advance to the next trial
-        console.log('Showing fixation, will automatically advance after 1500ms');
-        
+        // Only run this timer if responseTimeoutActive is false
+        if (responseTimeoutActive) return;
+        const possibleDelays = [110, 130, 150];
+        const randomDelay = possibleDelays[Math.floor(Math.random() * possibleDelays.length)];
+        console.log('Showing fixation, will automatically advance after '+randomDelay);
         const fixationTimer = setTimeout(() => {
           setShowFixation(false);
           setCurrentTrialIndex(prevIndex => prevIndex + 1);
-          
-          // Don't inherit responses from any previous trials with same index
           setResponses(prev => {
             const newResponses = { ...prev };
             delete newResponses[currentTrialIndex + 1];
             return newResponses;
           });
-        }, 1500); // Changed from 500ms to 1500ms
-        
+        }, randomDelay); 
+
+        //TODO randomize time 1100,1300,1500 done
+        //After saving response wait for 1000 ms done
+        //Remove loading experiment dialog done 
+        //Show results for each
+
+
         return () => clearTimeout(fixationTimer);
       }
     }
@@ -909,7 +969,10 @@ useEffect(() => {
     isPaused,
     waitingForSpacebar,
     waitingForSpacebarAfterPMCues, // Added dependency
-    isLoading
+    isLoading,
+    responseTimeoutActive, // Add this dependency
+    isPractice,
+    waitingToStartMain
   ]);
   
   const togglePause = () => {
@@ -945,26 +1008,26 @@ useEffect(() => {
   };
   
   // If still loading, show a loading indicator
-  if (isLoading) {
-    return (
-      <Card className="w-full max-w-3xl p-6 flex items-center justify-center">
-        <div className="text-center p-8">
-          <h3 className="text-xl font-medium mb-4">Loading Experiment...</h3>
-          <div className="h-2 w-40 bg-gray-200 rounded-full overflow-hidden">
-            <div className="h-full bg-blue-600 rounded-full animate-pulse"></div>
-          </div>
-          {/* Show additional debug info */}
-          <div className="mt-4 text-sm text-left bg-gray-100 p-4 rounded-md overflow-auto max-h-36">
-            <p>Session: {currentSession}</p>
-            <p>Block: {currentBlock}</p>
-            <p>Phase: {currentPhase}</p>
-            <p>PM Cues: {pmCues.length}</p>
-            <p>Trials: {trials.length}</p>
-          </div>
-        </div>
-      </Card>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <Card className="w-full max-w-3xl p-6 flex items-center justify-center">
+  //       <div className="text-center p-8">
+  //         <h3 className="text-xl font-medium mb-4">Loading Experiment...</h3>
+  //         <div className="h-2 w-40 bg-gray-200 rounded-full overflow-hidden">
+  //           <div className="h-full bg-blue-600 rounded-full animate-pulse"></div>
+  //         </div>
+  //         {/* Show additional debug info */}
+  //         <div className="mt-4 text-sm text-left bg-gray-100 p-4 rounded-md overflow-auto max-h-36">
+  //           <p>Session: {currentSession}</p>
+  //           <p>Block: {currentBlock}</p>
+  //           <p>Phase: {currentPhase}</p>
+  //           <p>PM Cues: {pmCues.length}</p>
+  //           <p>Trials: {trials.length}</p>
+  //         </div>
+  //       </div>
+  //     </Card>
+  //   );
+  // }
   
   // Add a fallback for uninitialized state
   if (!initialized && !isLoading) {
@@ -976,11 +1039,11 @@ useEffect(() => {
             <div className="h-full bg-blue-600 rounded-full animate-pulse"></div>
           </div>
           {/* Show additional debug info */}
-          <div className="mt-4 text-sm text-left bg-gray-100 p-4 rounded-md overflow-auto max-h-36">
-            <p>Session: {currentSession}</p>
-            <p>Block: {currentBlock}</p>
-            <p>Not initialized. Click the button below to manually initialize.</p>
-          </div>
+          {/* <div className="mt-4 text-sm text-left bg-gray-100 p-4 rounded-md overflow-auto max-h-36"> */}
+            {/* <p>Session: {currentSession}</p>
+            <p>Block: {currentBlock}</p> */}
+            {/* <p>Not initialized. Click the button below to manually initialize.</p> */}
+          {/* </div> */}
           <Button 
             onClick={() => {
               console.log('Manual initialization attempt');
@@ -989,7 +1052,7 @@ useEffect(() => {
             }}
             className="mt-4"
           >
-            Click to Initialize
+            Start
           </Button>
         </div>
       </Card>
@@ -1002,7 +1065,15 @@ useEffect(() => {
       className="min-h-screen w-full flex items-center justify-center" // Removed bg-white and p-4
     >
       {/* {isLoading && <LoadingSpinner />} */}
-      {!isLoading && isExperimentActive && initialized && (
+      {waitingToStartMain && (
+        <Card className="w-full max-w-3xl p-6 flex items-center justify-center">
+          <div className="text-center p-8">
+            <h3 className="text-xl font-medium mb-4">Practice Complete!</h3>
+            <p className="text-lg">Press <strong>SPACEBAR</strong> to begin the main task.</p>
+          </div>
+        </Card>
+      )}
+      {!isLoading && isExperimentActive && initialized && !waitingToStartMain && (
         <ErrorBoundary>
           <Card className={`mb-4 p-0 border-none bg-transparent shadow-none ${ // MODIFIED: p-6 to p-0, added border-none, bg-transparent, shadow-none
             isFullScreen ? 'flex-1 flex flex-col' : ''
@@ -1032,7 +1103,7 @@ useEffect(() => {
 
                 {!isPaused && waitingForSpacebarAfterPMCues && (
                   <div className="text-center p-8">
-                    <p className="text-lg">Press <strong>SPACEBAR</strong> to continue to the images.</p>
+                    <p className="text-lg">Press <strong>SPACEBAR</strong> to continue with the task.</p>
                   </div>
                 )}
 
@@ -1071,8 +1142,8 @@ useEffect(() => {
                 
                 {!isPaused && !waitingForSpacebarAfterPMCues && currentPhase === 'blockEnd' && waitingForSpacebar && (
                   <div className="text-center p-8">
-                    <h3 className="text-xl font-medium mb-4">Block Complete!</h3>
-                    <p className="text-lg">Press <strong>SPACEBAR</strong> to continue to the next block or session.</p>
+                    <h3 className="text-xl font-medium mb-4">Session Complete!</h3>
+                    <p className="text-lg">Press <strong>SPACEBAR</strong> to continue to the next session.</p>
                   </div>
                 )}
               </ErrorBoundary>
